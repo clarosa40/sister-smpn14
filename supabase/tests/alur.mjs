@@ -1,0 +1,716 @@
+import { PGlite } from "@electric-sql/pglite";
+import { readFileSync, readdirSync } from "node:fs";
+
+const MIG = new URL("../migrations/", import.meta.url);
+const TU = "11111111-1111-1111-1111-111111111111"; // tata usaha
+const PGR = "22222222-2222-2222-2222-222222222222"; // pengurus barang
+const PGW = "33333333-3333-3333-3333-333333333333"; // pegawai
+
+// Barang dicari lewat nama, bukan kode. Kode barang berasal dari
+// Excel inventaris sekolah dan akan diganti seluruhnya saat data
+// sungguhan masuk; tes tidak boleh ikut mati karenanya.
+const SPIDOL = "Spidol whiteboard hitam";
+const HVS = "Kertas HVS A4 70 gram";
+const PEL = "Kain pel";
+
+const db = new PGlite();
+let pass = 0,
+    fail = 0;
+
+// Hasil query dijadikan peta bernama supaya urutan baris tidak
+// pernah jadi bagian dari yang diuji.
+const petaNama = (rows) => Object.fromEntries(rows.map((r) => [r.nama, r]));
+
+function ok(label, cond, extra = "") {
+    if (cond) {
+        pass++;
+        console.log(`  ok    ${label}`);
+    } else {
+        fail++;
+        console.log(`  FAIL  ${label} ${extra}`);
+    }
+}
+
+async function expectError(label, fn, fragment) {
+    try {
+        await fn();
+        fail++;
+        console.log(`  FAIL  ${label} — tidak ada error sama sekali`);
+    } catch (e) {
+        const hit =
+            !fragment ||
+            e.message.toLowerCase().includes(fragment.toLowerCase());
+        if (hit) {
+            pass++;
+            console.log(`  ok    ${label} — "${e.message.slice(0, 70)}"`);
+        } else {
+            fail++;
+            console.log(`  FAIL  ${label} — error lain: ${e.message}`);
+        }
+    }
+}
+
+async function as(uid, fn) {
+    await db.exec(
+        `select set_config('request.jwt.claim.sub', '${uid}', false); set role authenticated;`,
+    );
+    try {
+        return await fn();
+    } finally {
+        await db.exec(
+            `reset role; select set_config('request.jwt.claim.sub', '', false);`,
+        );
+    }
+}
+
+// ---- setup -------------------------------------------------------
+await db.exec(`
+create schema if not exists auth;
+create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb);
+create or replace function auth.uid() returns uuid language sql stable as $fn$
+  select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $fn$;
+create role anon; create role authenticated; create role service_role;`);
+
+for (const f of readdirSync(MIG)
+    .filter((f) => f.endsWith(".sql"))
+    .sort()) {
+    await db.exec(readFileSync(new URL(f, MIG), "utf8"));
+}
+
+await db.exec(`
+insert into auth.users (id, email) values
+  ('${TU}',  'tu@smpn14.sch.id'),
+  ('${PGR}', 'sarpras@smpn14.sch.id'),
+  ('${PGW}', 'guru.ipa@smpn14.sch.id');
+update public.profil set role = 'tata_usaha',
+  unit_kerja_id = (select id from public.unit_kerja where nama = 'Tata Usaha')
+  where id = '${TU}';
+update public.profil set role = 'pengurus_barang',
+  unit_kerja_id = (select id from public.unit_kerja where nama = 'Sarana Prasarana')
+  where id = '${PGR}';
+update public.profil set
+  unit_kerja_id = (select id from public.unit_kerja where nama = 'Guru')
+  where id = '${PGW}';`);
+
+const cariBarang = async (nama) =>
+    (await db.query(`select id from public.barang where nama = $1`, [nama]))
+        .rows[0].id;
+
+const spidol = await cariBarang(SPIDOL);
+const hvs = await cariBarang(HVS);
+const pel = await cariBarang(PEL);
+
+console.log("\n— barang masuk —");
+await as(TU, async () => {
+    await expectError(
+        "tata usaha tidak boleh mencatat penerimaan",
+        () => db.query(`select public.catat_penerimaan(gen_random_uuid())`),
+        "pengurus barang",
+    );
+});
+
+let penerimaanId;
+await as(PGR, async () => {
+    await db.exec(`
+    insert into public.penerimaan (no_dokumen)
+    values ('INV-8841');
+    insert into public.penerimaan_item (penerimaan_id, barang_id, jumlah, harga_satuan)
+    select p.id, '${spidol}', 50, 8500 from public.penerimaan p order by p.created_at desc limit 1;
+    insert into public.penerimaan_item (penerimaan_id, barang_id, jumlah, harga_satuan)
+    select p.id, '${hvs}', 2, 55000 from public.penerimaan p order by p.created_at desc limit 1;`);
+
+    const p = (
+        await db.query(
+            `select id, nomor, dibuat_oleh from public.penerimaan limit 1`,
+        )
+    ).rows[0];
+    penerimaanId = p.id;
+    ok(
+        "nomor penerimaan global dari sequence",
+        p.nomor === "TRM-000001",
+        `(dapat ${p.nomor})`,
+    );
+    ok(
+        "dibuat_oleh penerimaan terisi sendiri dari auth.uid()",
+        p.dibuat_oleh === PGR,
+        `(${p.dibuat_oleh})`,
+    );
+
+    const n = (
+        await db.query(`select public.catat_penerimaan($1) as n`, [
+            penerimaanId,
+        ])
+    ).rows[0].n;
+    ok("catat_penerimaan menerbitkan 2 mutasi masuk", n === 2, `(${n})`);
+
+    const ulang = (
+        await db.query(`select public.catat_penerimaan($1) as n`, [
+            penerimaanId,
+        ])
+    ).rows[0].n;
+    ok(
+        "catat_penerimaan idempoten — dijalankan dua kali tetap 0 baris baru",
+        ulang === 0,
+        `(${ulang})`,
+    );
+
+    const s = petaNama(
+        (
+            await db.query(
+                `select nama, stok, status from public.stok_barang where nama = any($1)`,
+                [[SPIDOL, HVS, PEL]],
+            )
+        ).rows,
+    );
+    ok(
+        "stok spidol = 50 (agregasi mutasi)",
+        s[SPIDOL].stok === 50 && s[SPIDOL].status === "tersedia",
+        JSON.stringify(s[SPIDOL]),
+    );
+    ok("stok HVS = 2", s[HVS].stok === 2, JSON.stringify(s[HVS]));
+    ok(
+        "kain pel belum pernah diterima -> kosong",
+        s[PEL].stok === 0 && s[PEL].status === "kosong",
+        JSON.stringify(s[PEL]),
+    );
+});
+
+console.log("\n— apa yang dilihat tiap peran —");
+await as(TU, async () => {
+    const s = (
+        await db.query(`select count(*)::int as n from public.stok_barang`)
+    ).rows[0];
+    ok("tata usaha ikut melihat angka stok", s.n > 0, `(${s.n} baris)`);
+
+    await expectError(
+        "tata usaha tidak boleh menulis mutasi langsung",
+        () =>
+            db.exec(`insert into public.mutasi_stok (barang_id, jenis, jumlah, catatan)
+                   values ('${spidol}', 'rusak_kadaluarsa', -1, 'coba-coba')`),
+        "row-level security",
+    );
+});
+
+await as(PGW, async () => {
+    const k = petaNama(
+        (
+            await db.query(
+                `select * from public.katalog_pemohon where nama = any($1)`,
+                [[SPIDOL, PEL]],
+            )
+        ).rows,
+    );
+    ok("katalog: spidol tersedia", k[SPIDOL].tersedia === true);
+    ok(
+        "katalog: kain pel belum pernah diterima -> tersedia = false",
+        k[PEL].tersedia === false,
+    );
+    ok(
+        "katalog tidak punya kolom angka apa pun",
+        !Object.keys(k[SPIDOL]).some((c) => /stok|jumlah/.test(c)),
+        Object.keys(k[SPIDOL]).join(","),
+    );
+
+    const s = (await db.query(`select * from public.stok_barang`)).rows;
+    ok(
+        "pegawai membaca stok_barang -> 0 baris (bukan angka nol)",
+        s.length === 0,
+        `(${s.length} baris)`,
+    );
+
+    const m = (await db.query(`select * from public.mutasi_stok`)).rows;
+    ok(
+        "pegawai membaca mutasi_stok -> 0 baris",
+        m.length === 0,
+        `(${m.length} baris)`,
+    );
+});
+
+console.log("\n— pengajuan —");
+let permA, permB;
+await as(PGW, async () => {
+    await db.exec(
+        `insert into public.permintaan (keperluan) values ('Praktikum kelas 8 semester ganjil');`,
+    );
+    const p = (
+        await db.query(
+            `select id, nomor, status, unit_kerja_id from public.permintaan order by created_at limit 1`,
+        )
+    ).rows[0];
+    permA = p.id;
+    ok("draft belum punya nomor", p.nomor === null && p.status === "draft");
+    ok("unit_kerja terisi otomatis dari profil", p.unit_kerja_id !== null);
+
+    await expectError(
+        'barang berstok nol tidak bisa diminta — "disabled" ditegakkan database',
+        () =>
+            db.exec(
+                `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta) values ('${permA}', '${pel}', 1)`,
+            ),
+        "kosong",
+    );
+
+    await db.exec(`
+    insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta) values
+      ('${permA}', '${spidol}', 5),
+      ('${permA}', '${hvs}', 2);`);
+    const it = (
+        await db.query(
+            `select nama_barang_snapshot, satuan_snapshot from public.permintaan_item where barang_id = '${spidol}' and permintaan_id = '${permA}'`,
+        )
+    ).rows[0];
+    ok(
+        "snapshot nama/satuan dibekukan server",
+        it.nama_barang_snapshot === "Spidol whiteboard hitam" &&
+            it.satuan_snapshot === "pcs",
+    );
+
+    // Permintaan kedua disusun selagi stok masih utuh — nanti dipakai
+    // membuktikan all-or-nothing setelah permintaan A menghabiskan HVS.
+    await db.exec(`
+    insert into public.permintaan (keperluan) values ('Administrasi wali kelas');`);
+    permB = (
+        await db.query(
+            `select id from public.permintaan order by created_at desc limit 1`,
+        )
+    ).rows[0].id;
+    await db.exec(`
+    insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta) values
+      ('${permB}', '${spidol}', 10),
+      ('${permB}', '${hvs}', 2);`);
+
+    await db.exec(
+        `update public.permintaan set status = 'diajukan' where id in ('${permA}', '${permB}')`,
+    );
+    const q = (
+        await db.query(
+            `select nomor, diajukan_at from public.permintaan where id = '${permA}'`,
+        )
+    ).rows[0];
+    ok(
+        "nomor permintaan terbit saat diajukan",
+        q.nomor === "SPB-000001" && q.diajukan_at !== null,
+        q.nomor,
+    );
+
+    await expectError(
+        "pegawai tidak bisa menyetujui permintaannya sendiri",
+        () =>
+            db.exec(
+                `update public.permintaan set status = 'disetujui' where id = '${permA}'`,
+            ),
+        "tata usaha",
+    );
+
+    await expectError(
+        "pegawai tidak bisa menaikkan perannya sendiri",
+        () =>
+            db.exec(
+                `update public.profil set role = 'tata_usaha' where id = '${PGW}'`,
+            ),
+        "tata usaha",
+    );
+});
+
+console.log("\n— persetujuan tata usaha —");
+await as(PGR, async () => {
+    await expectError(
+        "pengurus barang tidak boleh menyetujui",
+        () =>
+            db.exec(
+                `update public.permintaan set status = 'disetujui' where id = '${permA}'`,
+            ),
+        "tata usaha",
+    );
+
+    await expectError(
+        "penyiapan ditolak selama belum disetujui",
+        () => db.query(`select public.siapkan_permintaan($1)`, [permA]),
+        "menunggu persetujuan",
+    );
+});
+
+await as(TU, async () => {
+    await expectError(
+        "penolakan wajib menyertakan alasan",
+        () =>
+            db.exec(
+                `update public.permintaan set status = 'ditolak' where id = '${permB}'`,
+            ),
+        "alasan_tolak_wajib",
+    );
+
+    await db.exec(
+        `update public.permintaan set status = 'disetujui' where id in ('${permA}', '${permB}')`,
+    );
+    const p = (
+        await db.query(
+            `select status, disetujui_at, disetujui_oleh from public.permintaan where id = '${permA}'`,
+        )
+    ).rows[0];
+    ok(
+        "tata usaha menyetujui — jejaknya tercatat",
+        p.status === "disetujui" &&
+            p.disetujui_at !== null &&
+            p.disetujui_oleh === TU,
+    );
+
+    await expectError(
+        "tata usaha tidak boleh menyiapkan barang",
+        () => db.query(`select public.siapkan_permintaan($1)`, [permA]),
+        "pengurus barang",
+    );
+});
+
+console.log("\n— penyiapan barang (all-or-nothing) —");
+await as(PGR, async () => {
+    const r = await db.query(
+        `select (public.siapkan_permintaan($1)).status as status`,
+        [permA],
+    );
+    ok(
+        "siapkan_permintaan -> siap_diambil",
+        r.rows[0].status === "siap_diambil",
+        r.rows[0].status,
+    );
+
+    const s = petaNama(
+        (
+            await db.query(
+                `select nama, stok from public.stok_barang where nama = any($1)`,
+                [[SPIDOL, HVS]],
+            )
+        ).rows,
+    );
+    ok(
+        "stok berkurang persis sebanyak jumlah_diminta (50-5=45)",
+        s[SPIDOL].stok === 45,
+        `(${s[SPIDOL].stok})`,
+    );
+    ok(
+        "HVS habis terpakai permintaan A (2-2=0)",
+        s[HVS].stok === 0,
+        `(${s[HVS].stok})`,
+    );
+
+    // Permintaan B minta 10 spidol (cukup) dan 2 rim HVS (sudah habis).
+    await expectError(
+        "satu item kurang -> seluruh permintaan gagal disiapkan",
+        () => db.query(`select public.siapkan_permintaan($1)`, [permB]),
+        "tidak cukup",
+    );
+
+    const sisa = (
+        await db.query(`select stok from public.stok_barang where nama = $1`, [
+            SPIDOL,
+        ])
+    ).rows[0];
+    ok(
+        "spidol tidak ikut keluar walau stoknya cukup — all-or-nothing",
+        sisa.stok === 45,
+        `(${sisa.stok})`,
+    );
+
+    const mB = (
+        await db.query(
+            `
+    select count(*)::int as n from public.mutasi_stok m
+    join public.permintaan_item pi on pi.id = m.permintaan_item_id
+    where pi.permintaan_id = $1`,
+            [permB],
+        )
+    ).rows[0];
+    ok(
+        "tidak satu pun mutasi terbit untuk permintaan yang gagal",
+        mB.n === 0,
+        `(${mB.n})`,
+    );
+
+    const stB = (
+        await db.query(`select status from public.permintaan where id = $1`, [
+            permB,
+        ])
+    ).rows[0];
+    ok(
+        "permintaan gagal tetap disetujui, tidak otomatis ditolak",
+        stB.status === "disetujui",
+        stB.status,
+    );
+
+    await expectError(
+        "status tidak bisa dilompatkan ke siap_diambil tanpa mengeluarkan stok",
+        () =>
+            db.exec(
+                `update public.permintaan set status = 'siap_diambil' where id = '${permB}'`,
+            ),
+        "belum dikeluarkan dari stok",
+    );
+});
+
+console.log("\n— penyerahan barang —");
+await as(TU, async () => {
+    await expectError(
+        "tata usaha tidak boleh menyerahkan barang",
+        () =>
+            db.exec(
+                `update public.permintaan set status = 'selesai' where id = '${permA}'`,
+            ),
+        "pengurus barang",
+    );
+});
+
+await as(PGR, async () => {
+    await db.exec(
+        `update public.permintaan set status = 'selesai' where id = '${permA}'`,
+    );
+    const p = (
+        await db.query(
+            `select status, selesai_at, diserahkan_oleh from public.permintaan where id = '${permA}'`,
+        )
+    ).rows[0];
+    ok(
+        "pengurus barang menyerahkan — jejaknya tercatat",
+        p.status === "selesai" &&
+            p.selesai_at !== null &&
+            p.diserahkan_oleh === PGR,
+    );
+
+    const log = (
+        await db.query(
+            `select status_ke from public.permintaan_log where permintaan_id = $1 order by created_at, status_ke`,
+            [permA],
+        )
+    ).rows;
+    ok(
+        "log mencatat seluruh perpindahan status",
+        log.length === 5,
+        JSON.stringify(log.map((l) => l.status_ke)),
+    );
+
+    await expectError(
+        "transisi melompat ditolak",
+        () =>
+            db.exec(
+                `update public.permintaan set status = 'disetujui' where id = '${permA}'`,
+            ),
+        "tidak diizinkan",
+    );
+});
+
+console.log("\n— penolakan dan pembatalan —");
+await as(TU, async () => {
+    await db.exec(`update public.permintaan set status = 'ditolak',
+    alasan_tolak = 'Kertas HVS habis, diusulkan masuk pengadaan triwulan depan'
+    where id = '${permB}'`);
+    const p = (
+        await db.query(
+            `select status from public.permintaan where id = '${permB}'`,
+        )
+    ).rows[0];
+    ok(
+        "tata usaha menolak permintaan yang stoknya tak kunjung ada",
+        p.status === "ditolak",
+    );
+
+    const log = (
+        await db.query(
+            `select catatan from public.permintaan_log where permintaan_id = $1 and status_ke = 'ditolak'`,
+            [permB],
+        )
+    ).rows[0];
+    ok(
+        "alasan penolakan ikut masuk log",
+        /HVS habis/.test(log.catatan),
+        log.catatan,
+    );
+});
+
+let permC;
+await as(PGW, async () => {
+    await db.exec(
+        `insert into public.permintaan (keperluan) values ('Salah input, mau dibatalkan');`,
+    );
+    permC = (
+        await db.query(
+            `select id from public.permintaan order by created_at desc limit 1`,
+        )
+    ).rows[0].id;
+
+    await expectError(
+        "barang yang baru saja habis langsung tidak bisa diminta",
+        () =>
+            db.exec(
+                `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta) values ('${permC}', '${hvs}', 1)`,
+            ),
+        "kosong",
+    );
+
+    await db.exec(`
+    insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta) values ('${permC}', '${spidol}', 1);
+    update public.permintaan set status = 'diajukan' where id = '${permC}';
+    update public.permintaan set status = 'dibatalkan' where id = '${permC}';`);
+    const p = (
+        await db.query(
+            `select status from public.permintaan where id = '${permC}'`,
+        )
+    ).rows[0];
+    ok(
+        "pemohon boleh membatalkan permintaannya sendiri",
+        p.status === "dibatalkan",
+    );
+});
+
+console.log("\n— penyesuaian hasil hitung fisik —");
+await as(TU, async () => {
+    await expectError(
+        "tata usaha tidak boleh mencatat penyesuaian",
+        () =>
+            db.query(`select public.catat_penyesuaian($1, 40, 'coba-coba')`, [
+                spidol,
+            ]),
+        "pengurus barang",
+    );
+});
+
+await as(PGR, async () => {
+    const sebelum = (
+        await db.query(`select stok from public.stok_barang where nama = $1`, [
+            SPIDOL,
+        ])
+    ).rows[0].stok;
+
+    // Yang diketik adalah hasil hitungan fisik, bukan selisihnya.
+    const kurang = (
+        await db.query(`select public.catat_penyesuaian($1, $2, $3) as s`, [
+            spidol,
+            sebelum - 3,
+            "Opname: fisik kurang 3 dari buku",
+        ])
+    ).rows[0].s;
+    ok("fisik kurang -> selisih negatif ditulis", kurang === -3, `(${kurang})`);
+
+    const stokKurang = (
+        await db.query(`select stok from public.stok_barang where nama = $1`, [
+            SPIDOL,
+        ])
+    ).rows[0].stok;
+    ok(
+        "stok jadi persis sebanyak hitungan fisik",
+        stokKurang === sebelum - 3,
+        `(${stokKurang})`,
+    );
+
+    const lebih = (
+        await db.query(`select public.catat_penyesuaian($1, $2, $3) as s`, [
+            spidol,
+            sebelum + 2,
+            "Opname: ada sisa hibah belum tercatat",
+        ])
+    ).rows[0].s;
+    ok("fisik lebih -> selisih positif ditulis", lebih === 5, `(${lebih})`);
+
+    const stokLebih = (
+        await db.query(`select stok from public.stok_barang where nama = $1`, [
+            SPIDOL,
+        ])
+    ).rows[0].stok;
+    ok(
+        "stok naik ke hitungan fisik, bukan ditambah dua kali",
+        stokLebih === sebelum + 2,
+        `(${stokLebih})`,
+    );
+
+    const nol = (
+        await db.query(`select public.catat_penyesuaian($1, $2, $3) as s`, [
+            spidol,
+            sebelum + 2,
+            "Opname: sudah cocok",
+        ])
+    ).rows[0].s;
+    ok("fisik sama dengan buku -> 0, tanpa baris baru", nol === 0, `(${nol})`);
+
+    const n = (
+        await db.query(
+            `select count(*)::int as n from public.mutasi_stok where jenis = 'penyesuaian'`,
+        )
+    ).rows[0].n;
+    ok("hanya 2 baris penyesuaian yang terbit", n === 2, `(${n})`);
+
+    ok(
+        "dibuat_oleh terisi sendiri walau tanpa dokumen induk",
+        (
+            await db.query(
+                `select count(*)::int as n from public.mutasi_stok
+                     where jenis = 'penyesuaian' and dibuat_oleh = $1`,
+                [PGR],
+            )
+        ).rows[0].n === 2,
+    );
+
+    await expectError(
+        "penyesuaian tanpa catatan ditolak",
+        () =>
+            db.query(`select public.catat_penyesuaian($1, 10, '   ')`, [
+                spidol,
+            ]),
+        "wajib menyertakan catatan",
+    );
+
+    await expectError(
+        "hitungan fisik negatif ditolak",
+        () =>
+            db.query(`select public.catat_penyesuaian($1, -5, 'salah ketik')`, [
+                spidol,
+            ]),
+        "negatif",
+    );
+
+    await expectError(
+        "barang tak dikenal ditolak",
+        () =>
+            db.query(
+                `select public.catat_penyesuaian(gen_random_uuid(), 10, 'entah barang apa')`,
+            ),
+        "tidak dikenal",
+    );
+});
+
+console.log("\n— pagar terakhir —");
+await as(PGR, async () => {
+    // RLS tidak punya policy UPDATE/DELETE untuk mutasi_stok, jadi
+    // barisnya tersaring diam-diam - 0 baris terpengaruh, bukan error.
+    const u = await db.query(`update public.mutasi_stok set jumlah = 0`);
+    const d = await db.query(`delete from public.permintaan_log`);
+    ok(
+        "RLS: pengurus barang tidak bisa mengubah mutasi_stok",
+        u.affectedRows === 0,
+        `(${u.affectedRows} baris)`,
+    );
+    ok(
+        "RLS: pengurus barang tidak bisa menghapus log",
+        d.affectedRows === 0,
+        `(${d.affectedRows} baris)`,
+    );
+    const tetap = (
+        await db.query(
+            `select count(*)::int as n from public.mutasi_stok where jumlah = 0`,
+        )
+    ).rows[0];
+    ok("tidak ada baris mutasi yang ternoda", tetap.n === 0);
+});
+
+console.log("\n— lapis kedua: pemilik tabel pun ditolak —");
+await expectError(
+    "mutasi_stok append-only walau lewat SQL editor",
+    () => db.exec(`update public.mutasi_stok set jumlah = 0`),
+    "append-only",
+);
+await expectError(
+    "permintaan_log append-only walau lewat SQL editor",
+    () => db.exec(`delete from public.permintaan_log`),
+    "append-only",
+);
+
+console.log(`\n${pass} lolos, ${fail} gagal`);
+await db.close();
+process.exit(fail ? 1 : 0);
