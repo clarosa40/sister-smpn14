@@ -117,3 +117,23 @@ export function pesanGalatAuth(galat: AuthError): string {
     console.error("[auth]", galat.code, galat.status, galat.message);
     return GALAT_UMUM;
 }
+
+/**
+ * PostgREST menerima .or() sebagai satu string filter, bukan nilai
+ * berparameter: koma memisahkan cabang dan tanda kurung mengelompokkannya.
+ * Kata kunci mentah karena itu bisa merusak seluruh ekspresinya - pencarian
+ * "HVS, A4" terbaca sebagai cabang ketiga yang tidak sah, dan permintaannya
+ * gagal alih-alih menghasilkan nol baris.
+ *
+ * Nilainya dikutip ganda supaya koma dan kurung di dalamnya ikut terbawa apa
+ * adanya, sementara joker ilike dibuang supaya "50%" mencari "50", bukan
+ * mencocokkan segalanya.
+ *
+ * Tinggal di sini, bukan di salah satu page.tsx, sejak pemanggilnya lebih
+ * dari satu: sanitasi seperti ini tidak boleh ditulis ulang per halaman.
+ */
+export const siapkanKataKunci = (kata: string): string =>
+    kata
+        .replace(/[%_]/g, "")
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"');

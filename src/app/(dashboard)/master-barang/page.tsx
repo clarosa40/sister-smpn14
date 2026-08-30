@@ -1,4 +1,4 @@
-import { pastikanTataUsaha } from "@/lib/aksi";
+import { pastikanTataUsaha, siapkanKataKunci } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
@@ -11,23 +11,6 @@ export const metadata: Metadata = {
 };
 
 const PER_HALAMAN = 25;
-
-/**
- * PostgREST menerima .or() sebagai satu string filter, bukan nilai
- * berparameter: koma memisahkan cabang dan tanda kurung mengelompokkannya.
- * Kata kunci mentah karena itu bisa merusak seluruh ekspresinya - pencarian
- * "HVS, A4" terbaca sebagai cabang ketiga yang tidak sah, dan permintaannya
- * gagal alih-alih menghasilkan nol baris.
- *
- * Nilainya dikutip ganda supaya koma dan kurung di dalamnya ikut terbawa apa
- * adanya, sementara joker ilike dibuang supaya "50%" mencari "50", bukan
- * mencocokkan segalanya.
- */
-const siapkanKataKunci = (kata: string): string =>
-    kata
-        .replace(/[%_]/g, "")
-        .replace(/\\/g, "\\\\")
-        .replace(/"/g, '\\"');
 
 /** `hal` dihilangkan di halaman pertama supaya alamatnya tetap bersih. */
 const alamatDaftar = (cari: string, halaman = 1): string => {
