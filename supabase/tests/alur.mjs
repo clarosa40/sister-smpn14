@@ -66,7 +66,7 @@ async function as(uid, fn) {
 // ---- setup -------------------------------------------------------
 await db.exec(`
 create schema if not exists auth;
-create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb);
+create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb, raw_app_meta_data jsonb);
 create or replace function auth.uid() returns uuid language sql stable as $fn$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $fn$;
 create role anon; create role authenticated; create role service_role;`);
@@ -843,6 +843,202 @@ await as(TU, async () => {
         "barang yang sudah dipakai tidak bisa dihapus",
         () => db.query(`delete from public.barang where id = '${spidol}'`),
         "foreign key",
+    );
+});
+
+// Sama seperti master data: ditaruh paling akhir karena bagian ini
+// menambah permintaan dan mengutak-atik kolom aktif.
+console.log("\n— pengguna —");
+
+// Draft disusun selagi akunnya masih aktif. Nanti dipakai membuktikan
+// bahwa penonaktifan ikut mengunci baris yang sudah terlanjur ada.
+let permD;
+await as(PGW, async () => {
+    await db.exec(
+        `insert into public.permintaan (keperluan) values ('Draft sebelum akun dinonaktifkan');`,
+    );
+    permD = (
+        await db.query(
+            `select id from public.permintaan order by created_at desc limit 1`,
+        )
+    ).rows[0].id;
+});
+
+await as(TU, async () => {
+    const p = (
+        await db.query(`select * from public.pengguna order by nama_lengkap`)
+    ).rows;
+    ok(
+        "tata usaha melihat seluruh akun lewat view pengguna",
+        p.length === 3,
+        `(${p.length} baris)`,
+    );
+
+    const email = Object.fromEntries(p.map((r) => [r.id, r.email]));
+    ok(
+        "email ikut terbawa dari auth.users",
+        email[TU] === "tu@smpn14.sch.id" &&
+            email[PGW] === "guru.ipa@smpn14.sch.id",
+        JSON.stringify(email),
+    );
+
+    const guru = p.find((r) => r.id === PGW);
+    ok(
+        "unit kerja ikut terbaca lewat left join",
+        guru.unit_kerja === "Guru",
+        String(guru.unit_kerja),
+    );
+    ok(
+        "sandi_sementara tanpa app_metadata -> false, bukan null",
+        guru.sandi_sementara === false,
+        String(guru.sandi_sementara),
+    );
+});
+
+// Ditulis sebagai pemilik tabel, bukan lewat as(): app_metadata memang
+// hanya bisa disentuh service role, persis seperti nanti di Supabase.
+await db.exec(
+    `update auth.users set raw_app_meta_data = jsonb_build_object('sandi_sementara', true) where id = '${PGW}'`,
+);
+
+await as(TU, async () => {
+    const r = (
+        await db.query(
+            `select sandi_sementara from public.pengguna where id = '${PGW}'`,
+        )
+    ).rows[0];
+    ok(
+        "sandi_sementara terbaca dari app_metadata",
+        r.sandi_sementara === true,
+        String(r.sandi_sementara),
+    );
+});
+
+// Inilah satu-satunya yang berdiri antara seorang guru dan seluruh
+// alamat email staf: view ini berjalan sebagai pemiliknya, jadi RLS
+// profil tidak berlaku dan where is_tu() adalah gerbangnya.
+await as(PGW, async () => {
+    const p = (await db.query(`select * from public.pengguna`)).rows;
+    ok(
+        "pegawai membaca view pengguna -> 0 baris, bukan galat",
+        p.length === 0,
+        `(${p.length} baris)`,
+    );
+});
+
+await as(TU, async () => {
+    const u = await db.query(
+        `update public.profil set aktif = false where id = '${PGW}'`,
+    );
+    ok(
+        "tata usaha menonaktifkan akun pegawai",
+        u.affectedRows === 1,
+        `(${u.affectedRows} baris)`,
+    );
+});
+
+await as(PGW, async () => {
+    await expectError(
+        "akun nonaktif tidak bisa membuat permintaan",
+        () =>
+            db.query(
+                `insert into public.permintaan (keperluan) values ('Setelah dinonaktifkan')`,
+            ),
+        "row-level security",
+    );
+
+    await expectError(
+        "akun nonaktif tidak bisa menambah baris permintaan",
+        () =>
+            db.query(
+                `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+                 values ('${permD}', '${spidol}', 1)`,
+            ),
+        "row-level security",
+    );
+
+    // UPDATE dan DELETE yang ditolak RLS tidak memunculkan galat sama
+    // sekali - barisnya sekadar hilang dari pandangan. Itu sebabnya
+    // server action memeriksa baris yang kembali, bukan hanya error.
+    const u = await db.query(
+        `update public.permintaan set keperluan = 'diubah diam-diam' where id = '${permD}'`,
+    );
+    ok(
+        "akun nonaktif mengubah draftnya sendiri: nol baris, tanpa galat",
+        u.affectedRows === 0,
+        `(${u.affectedRows} baris)`,
+    );
+
+    const d = await db.query(
+        `delete from public.permintaan where id = '${permD}'`,
+    );
+    ok(
+        "akun nonaktif menghapus draftnya sendiri: nol baris",
+        d.affectedRows === 0,
+        `(${d.affectedRows} baris)`,
+    );
+});
+
+await as(TU, async () => {
+    await db.query(
+        `update public.profil set aktif = true where id = '${PGW}'`,
+    );
+});
+
+await as(PGW, async () => {
+    const u = await db.query(
+        `update public.permintaan set keperluan = 'Boleh lagi setelah diaktifkan' where id = '${permD}'`,
+    );
+    ok(
+        "diaktifkan lagi -> boleh mengubah draftnya",
+        u.affectedRows === 1,
+        `(${u.affectedRows} baris)`,
+    );
+
+    await db.query(
+        `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+         values ('${permD}', '${spidol}', 1)`,
+    );
+    const n = (
+        await db.query(
+            `select count(*)::int as n from public.permintaan_item where permintaan_id = '${permD}'`,
+        )
+    ).rows[0].n;
+    ok("diaktifkan lagi -> boleh menambah baris permintaan", n === 1, `(${n})`);
+
+    await db.query(
+        `insert into public.permintaan (keperluan) values ('Permintaan setelah diaktifkan')`,
+    );
+    const b = (
+        await db.query(
+            `select count(*)::int as n from public.permintaan where keperluan = 'Permintaan setelah diaktifkan'`,
+        )
+    ).rows[0].n;
+    ok("diaktifkan lagi -> boleh membuat permintaan baru", b === 1, `(${b})`);
+});
+
+await as(TU, async () => {
+    const naik = await db.query(
+        `update public.profil set role = 'pengurus_barang' where id = '${PGW}'`,
+    );
+    ok(
+        "tata usaha boleh mengganti peran akun lain",
+        naik.affectedRows === 1,
+        `(${naik.affectedRows} baris)`,
+    );
+    await db.query(
+        `update public.profil set role = 'pegawai' where id = '${PGW}'`,
+    );
+});
+
+await as(PGW, async () => {
+    await expectError(
+        "pegawai tetap tidak bisa menaikkan perannya sendiri",
+        () =>
+            db.query(
+                `update public.profil set role = 'tata_usaha' where id = '${PGW}'`,
+            ),
+        "tata usaha",
     );
 });
 
