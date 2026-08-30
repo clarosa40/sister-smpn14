@@ -30,12 +30,18 @@ const PESAN: PesanKhas = {
  * Tata usaha tidak boleh menurunkan, menonaktifkan, atau menghapus
  * dirinya sendiri.
  *
- * Pagar ini saja sudah cukup menjaga sekolah dari laci terkunci, dan
- * tidak perlu hitungan "administrator terakhir": menurunkan satu-satunya
- * tata usaha berarti menurunkan diri sendiri, yang ditolak di sini; dan
- * kalau ada dua, siapa pun yang menurunkan yang lain tetap tersisa. Selalu
- * ada satu tata usaha aktif, tanpa satu pun query hitung dan tanpa balapan
- * antara dua tab.
+ * Pagar ini menutup jalur yang paling mungkin terjadi tanpa satu pun
+ * query hitung: menurunkan satu-satunya tata usaha berarti menurunkan
+ * diri sendiri, yang ditolak di sini, dan dua tata usaha yang bekerja
+ * bergantian selalu menyisakan satu - sebab yang sudah diturunkan tidak
+ * lolos pastikanTataUsaha() pada aksi berikutnya.
+ *
+ * Yang TIDAK ditutupnya: dua tata usaha yang menurunkan satu sama lain
+ * pada saat yang bersamaan. Keduanya lolos pemeriksaan id === saya.id
+ * sebelum salah satunya sempat tersimpan, dan sekolah bisa kehabisan
+ * tata usaha aktif. Menutupnya butuh penjaga di basis data - bukan di
+ * sini, sebab dua server action tidak saling melihat. Sampai itu ada,
+ * pemulihannya lewat SQL, seperti tata usaha pertama di seed.sql.
  */
 const PESAN_DIRI = {
     peran: "Peran akun sendiri tidak bisa diubah. Minta tata usaha lain yang melakukannya.",
