@@ -17,7 +17,7 @@ const PANJANG_BAKU = 12;
 
 /**
  * Rejection sampling, bukan `byte % 57`. 256 tidak habis dibagi 57, jadi
- * modulo polos membuat empat simbol pertama alfabet muncul lebih sering
+ * modulo polos membuat dua puluh delapan simbol pertama alfabet muncul lebih sering
  * daripada sisanya. Bias itu kecil dan tidak pernah terlihat - justru
  * karena itu ia harus ditutup di sini, bukan diingat belakangan.
  */

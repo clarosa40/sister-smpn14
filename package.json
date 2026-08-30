@@ -9,7 +9,7 @@
     "lint": "eslint",
     "db:test": "node supabase/tests/alur.mjs",
     "db:sandbox": "node supabase/tests/sandbox.mjs",
-    "test:sandi": "node src/lib/sandi.test.mjs",
+    "test:sandi": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/sandi.test.mjs",
     "reset:tautan": "node supabase/tests/tautan-reset.mjs"
   },
   "dependencies": {
