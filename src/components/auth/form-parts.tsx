@@ -1,10 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { Eye, EyeOff, LoaderCircle, type LucideIcon } from "lucide-react";
+import { Eye, EyeOff, type LucideIcon } from "lucide-react";
 import * as React from "react";
 
 // Kolom isian di layar auth lebih tinggi daripada kolom di dalam aplikasi:
@@ -69,33 +68,6 @@ export function PasswordInput({
     );
 }
 
-export function SubmitButton({
-    pending,
-    children,
-    pendingLabel,
-}: {
-    pending: boolean;
-    children: React.ReactNode;
-    pendingLabel: string;
-}) {
-    return (
-        <Button
-            type="submit"
-            disabled={pending}
-            className="mt-1 h-11 w-full rounded-lg text-sm sm:h-9.5"
-        >
-            {pending ? (
-                <>
-                    <LoaderCircle className="size-4 animate-spin" />
-                    {pendingLabel}
-                </>
-            ) : (
-                children
-            )}
-        </Button>
-    );
-}
-
 /**
  * Layar setelah sebuah langkah auth berhasil - tautan terkirim, kata sandi
  * tersimpan. Menggantikan formulirnya, bukan menempel di atasnya: begitu
@@ -125,25 +97,3 @@ export function PanelSukses({
 /** Aksi sekunder bertenang - dipakai di bawah PanelSukses. */
 export const KELAS_TAUTAN_HALUS =
     "inline-flex items-center gap-1.5 rounded-sm text-xs text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50";
-
-export function FormAlert({
-    tone = "error",
-    children,
-}: {
-    tone?: "error" | "success";
-    children: React.ReactNode;
-}) {
-    return (
-        <p
-            role="status"
-            className={cn(
-                "rounded-lg border px-3 py-2.5 text-[13px] leading-normal",
-                tone === "error"
-                    ? "border-destructive/25 bg-destructive/8 text-destructive"
-                    : "border-primary/25 bg-primary/8 text-primary",
-            )}
-        >
-            {children}
-        </p>
-    );
-}

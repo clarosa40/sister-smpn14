@@ -711,6 +711,141 @@ await expectError(
     "append-only",
 );
 
+// Dijalankan paling akhir dengan sengaja: beberapa pemeriksaan di atas
+// menghitung baris secara persis, jadi barang dan unit kerja karangan di
+// bawah ini tidak boleh terbit lebih dulu.
+console.log("\n— master data —");
+
+await as(PGW, async () => {
+    await expectError(
+        "pegawai tidak bisa menambah unit kerja",
+        () =>
+            db.query(
+                `insert into public.unit_kerja (nama) values ('Unit Karangan')`,
+            ),
+        "row-level security",
+    );
+    await expectError(
+        "pegawai tidak bisa menambah barang",
+        () =>
+            db.query(
+                `insert into public.barang (kode, nama, satuan)
+                 values ('9.9.9', 'Barang karangan', 'pcs')`,
+            ),
+        "row-level security",
+    );
+
+    // UPDATE yang ditolak RLS tidak memunculkan galat sama sekali - barisnya
+    // sekadar tak terlihat. Inilah sebabnya server action master data memeriksa
+    // baris yang kembali dari .select(), bukan hanya ada tidaknya error.
+    const u = await db.query(
+        `update public.barang set nama = 'diubah diam-diam'`,
+    );
+    ok(
+        "pegawai mengubah barang: nol baris, tanpa galat",
+        u.affectedRows === 0,
+        `(${u.affectedRows} baris)`,
+    );
+});
+
+await as(PGR, async () => {
+    await expectError(
+        "pengurus barang tidak bisa menambah unit kerja",
+        () =>
+            db.query(
+                `insert into public.unit_kerja (nama) values ('Unit Karangan')`,
+            ),
+        "row-level security",
+    );
+});
+
+await as(TU, async () => {
+    await db.query(
+        `insert into public.unit_kerja (nama) values ('Laboratorium IPA')`,
+    );
+    ok(
+        "tata usaha menambah unit kerja",
+        (
+            await db.query(
+                `select count(*)::int as n from public.unit_kerja where nama = 'Laboratorium IPA'`,
+            )
+        ).rows[0].n === 1,
+    );
+
+    await expectError(
+        "nama unit kerja kembar ditolak",
+        () =>
+            db.query(
+                `insert into public.unit_kerja (nama) values ('Laboratorium IPA')`,
+            ),
+        "duplicate key",
+    );
+
+    const a = await db.query(
+        `update public.unit_kerja set aktif = false where nama = 'Laboratorium IPA'`,
+    );
+    ok(
+        "tata usaha menonaktifkan unit kerja",
+        a.affectedRows === 1,
+        `(${a.affectedRows} baris)`,
+    );
+
+    const hapusUnit = await db.query(
+        `delete from public.unit_kerja where nama = 'Laboratorium IPA'`,
+    );
+    ok(
+        "unit kerja yang belum dipakai bisa dihapus",
+        hapusUnit.affectedRows === 1,
+        `(${hapusUnit.affectedRows} baris)`,
+    );
+
+    // 'Guru' dipegang profil pegawai dan permintaan yang sudah terbit.
+    await expectError(
+        "unit kerja yang dipakai tidak bisa dihapus",
+        () => db.query(`delete from public.unit_kerja where nama = 'Guru'`),
+        "foreign key",
+    );
+
+    await db.query(
+        `insert into public.barang (kode, nama, satuan)
+         values ('9.9.9.99.99.99.999.99999', 'Map plastik karangan', 'pcs')`,
+    );
+    ok(
+        "tata usaha menambah barang",
+        (
+            await db.query(
+                `select count(*)::int as n from public.barang where kode = '9.9.9.99.99.99.999.99999'`,
+            )
+        ).rows[0].n === 1,
+    );
+
+    await expectError(
+        "kode barang kembar ditolak",
+        () =>
+            db.query(
+                `insert into public.barang (kode, nama, satuan)
+                 values ('9.9.9.99.99.99.999.99999', 'Map lain', 'pcs')`,
+            ),
+        "duplicate key",
+    );
+
+    const hapusBaru = await db.query(
+        `delete from public.barang where kode = '9.9.9.99.99.99.999.99999'`,
+    );
+    ok(
+        "barang yang belum pernah dipakai bisa dihapus",
+        hapusBaru.affectedRows === 1,
+        `(${hapusBaru.affectedRows} baris)`,
+    );
+
+    // Spidol sudah punya baris penerimaan, permintaan, dan mutasi.
+    await expectError(
+        "barang yang sudah dipakai tidak bisa dihapus",
+        () => db.query(`delete from public.barang where id = '${spidol}'`),
+        "foreign key",
+    );
+});
+
 console.log(`\n${pass} lolos, ${fail} gagal`);
 await db.close();
 process.exit(fail ? 1 : 0);

@@ -2,12 +2,11 @@
 
 import {
     AuthField,
-    FormAlert,
     KELAS_TAUTAN_HALUS,
     PanelSukses,
     PasswordInput,
-    SubmitButton,
 } from "@/components/auth/form-parts";
+import { FormAlert, SubmitButton } from "@/components/form-parts";
 import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

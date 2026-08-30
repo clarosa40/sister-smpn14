@@ -3,10 +3,9 @@
 import {
     AuthField,
     AuthInput,
-    FormAlert,
     PasswordInput,
-    SubmitButton,
 } from "@/components/auth/form-parts";
+import { FormAlert, SubmitButton } from "@/components/form-parts";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

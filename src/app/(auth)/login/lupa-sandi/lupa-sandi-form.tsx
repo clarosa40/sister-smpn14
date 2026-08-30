@@ -3,11 +3,10 @@
 import {
     AuthField,
     AuthInput,
-    FormAlert,
     KELAS_TAUTAN_HALUS,
     PanelSukses,
-    SubmitButton,
 } from "@/components/auth/form-parts";
+import { FormAlert, SubmitButton } from "@/components/form-parts";
 import { createClient } from "@/lib/supabase/client";
 import { ArrowLeft, MailCheck } from "lucide-react";
 import Link from "next/link";
