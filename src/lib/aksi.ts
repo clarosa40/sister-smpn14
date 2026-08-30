@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getUserOrRedirect, type User } from "@/lib/dal";
-import type { PostgrestError } from "@supabase/supabase-js";
+import type { AuthError, PostgrestError } from "@supabase/supabase-js";
 
 /**
  * Bentuk kembalian setiap server action master data, sebangun dengan
@@ -69,4 +69,51 @@ export function pesanGalatDb(galat: PostgrestError, khas: PesanKhas): string {
             console.error("[master data]", galat.code, galat.message);
             return GALAT_UMUM;
     }
+}
+
+export const GALAT_RIWAYAT =
+    "Akun ini sudah punya riwayat permintaan, jadi tidak bisa dihapus. Nonaktifkan saja.";
+
+/**
+ * Pasangan pesanGalatDb untuk galat yang datang dari Supabase Auth.
+ *
+ * Auth Admin API mengembalikan AuthError, bukan PostgrestError: tidak ada
+ * kolom `code` berisi SQLSTATE, melainkan kode kata seperti `email_exists`.
+ * Karena itu ia butuh pemetaannya sendiri - bukan cabang tambahan di
+ * pesanGalatDb yang harus menebak-nebak bentuk galat yang masuk.
+ */
+export function pesanGalatAuth(galat: AuthError): string {
+    switch (galat.code) {
+        case "email_exists":
+        case "user_already_exists":
+            return "Email itu sudah dipakai akun lain.";
+
+        case "weak_password":
+            // Mestinya tidak terjangkau untuk sandi yang dibangkitkan
+            // sendiri; dipetakan karena /ganti-sandi menerima sandi ketikan.
+            return "Kata sandi terlalu pendek, minimal 8 karakter.";
+
+        case "same_password":
+            return "Kata sandi baru harus berbeda dari yang lama.";
+
+        case "validation_failed":
+            // validation_failed dipakai untuk banyak hal. Hanya yang
+            // menyebut email yang bisa diterjemahkan dengan yakin.
+            if (/email/i.test(galat.message)) {
+                return "Alamat email itu tidak bisa dipakai.";
+            }
+            break;
+    }
+
+    // Penghapusan akun yang tertahan foreign key sampai ke sini sebagai
+    // kegagalan tak terduga dari GoTrue, bukan sebagai kode kata: yang
+    // menolak adalah Postgres, di ujung rantai on delete cascade menuju
+    // profil. Bukan kerusakan - justru penjaga yang membuat riwayat
+    // permintaan lama tetap punya nama pemohon.
+    if (/23503|foreign key|permintaan/i.test(galat.message)) {
+        return GALAT_RIWAYAT;
+    }
+
+    console.error("[auth]", galat.code, galat.status, galat.message);
+    return GALAT_UMUM;
 }
