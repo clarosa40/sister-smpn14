@@ -11,6 +11,7 @@ import {
     type PesanKhas,
 } from "@/lib/aksi";
 import type { Role } from "@/lib/dal";
+import { sandiSementara } from "@/lib/sandi";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -173,4 +174,129 @@ export async function hapusAkun(id: string): Promise<HasilAksi> {
 
     revalidatePath(JALUR);
     return { ok: true };
+}
+
+export type HasilSandi =
+    | { ok: true; sandi: string }
+    | { ok: false; galat: string };
+
+const BENTUK_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Membuat akun. Satu-satunya jalur di aplikasi ini yang menulis ke
+ * auth.users, dan karena itu satu-satunya yang memegang klien
+ * service-role sejak baris pertamanya.
+ *
+ * Urutannya penting: admin client hanya membuat baris auth.users, tidak
+ * lebih. Peran dan unit kerja ditulis belakangan oleh klien biasa,
+ * sehingga jaga_profil() dan policy ubah_profil tetap berlaku bahkan
+ * pada pembuatan akun.
+ *
+ * handle_new_user() membaca nama_lengkap dari raw_user_meta_data dan
+ * membuat baris profil dalam transaksi yang sama, jadi baris itu sudah
+ * ada begitu createUser() kembali.
+ */
+export async function buatAkun(
+    _sebelumnya: HasilSandi | null,
+    formData: FormData,
+): Promise<HasilSandi> {
+    await pastikanTataUsaha();
+
+    const nama = teks(formData, "nama_lengkap");
+    const email = teks(formData, "email").toLowerCase();
+    const role = teks(formData, "role") as Role;
+    const unitKerjaId = teks(formData, "unit_kerja_id");
+
+    if (!nama) return { ok: false, galat: "Nama lengkap belum diisi." };
+    if (nama.length > PANJANG_NAMA) {
+        return {
+            ok: false,
+            galat: `Nama terlalu panjang, maksimal ${PANJANG_NAMA} karakter.`,
+        };
+    }
+    if (!BENTUK_EMAIL.test(email)) {
+        return { ok: false, galat: "Alamat email belum benar bentuknya." };
+    }
+    if (!PERAN.includes(role)) {
+        return { ok: false, galat: "Peran belum dipilih." };
+    }
+    if (!unitKerjaId) {
+        return { ok: false, galat: "Unit kerja belum dipilih." };
+    }
+
+    const sandi = sandiSementara();
+
+    const admin = createAdminClient();
+    const { data, error } = await admin.auth.admin.createUser({
+        email,
+        password: sandi,
+        // Melewati surel verifikasi, yang memang tidak akan terkirim ke
+        // mana-mana: proyek ini tanpa SMTP sendiri.
+        email_confirm: true,
+        user_metadata: { nama_lengkap: nama },
+        // app_metadata, bukan user_metadata: hanya service role yang boleh
+        // menulisnya, jadi pemiliknya tidak bisa membersihkan penandanya
+        // sendiri lalu melewati /ganti-sandi.
+        app_metadata: { sandi_sementara: true },
+    });
+
+    if (error) return { ok: false, galat: pesanGalatAuth(error) };
+
+    const supabase = await createClient();
+    const { data: baris, error: galatProfil } = await supabase
+        .from("profil")
+        .update({ role, unit_kerja_id: unitKerjaId })
+        .eq("id", data.user.id)
+        .select("id");
+
+    if (galatProfil || !baris?.length) {
+        // Akunnya sudah terlanjur ada. Menyebutnya "gagal" begitu saja akan
+        // menuntun tata usaha membuatnya sekali lagi dan bertemu
+        // "email sudah dipakai" - jadi katakan persis apa yang tersisa.
+        console.error(
+            "[pengguna] profil baru gagal dilengkapi",
+            galatProfil?.code,
+            galatProfil?.message,
+        );
+        revalidatePath(JALUR);
+        return {
+            ok: false,
+            galat: "Akun sudah dibuat, tetapi peran dan unit kerjanya belum tersimpan. Lengkapi lewat tombol Ubah pada barisnya, lalu setel ulang sandinya.",
+        };
+    }
+
+    revalidatePath(JALUR);
+    return { ok: true, sandi };
+}
+
+/**
+ * Menerbitkan sandi sementara baru - alur yang sama persis dengan
+ * pembuatan akun, dengan updateUserById() menggantikan createUser().
+ * Inilah obat untuk panel sandi yang sudah terlanjur ditutup.
+ */
+export async function setelUlangSandi(id: string): Promise<HasilSandi> {
+    const saya = await pastikanTataUsaha();
+
+    // Menyetel ulang sandi sendiri berarti memasang penanda pada akun
+    // sendiri, lalu tertahan di /ganti-sandi dengan sandi yang hanya sempat
+    // terlihat sekejap. Untuk keperluan itu ada halamannya sendiri.
+    if (id === saya.id) {
+        return {
+            ok: false,
+            galat: "Untuk mengganti kata sandi sendiri, buka halaman Ganti Kata Sandi.",
+        };
+    }
+
+    const sandi = sandiSementara();
+
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.updateUserById(id, {
+        password: sandi,
+        app_metadata: { sandi_sementara: true },
+    });
+
+    if (error) return { ok: false, galat: pesanGalatAuth(error) };
+
+    revalidatePath(JALUR);
+    return { ok: true, sandi };
 }

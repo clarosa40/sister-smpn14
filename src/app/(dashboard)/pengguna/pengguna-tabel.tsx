@@ -24,9 +24,10 @@ import {
 } from "@/components/ui/table";
 import { LABEL_PERAN } from "@/config/nav-items";
 import type { Role } from "@/lib/dal";
-import { Pencil, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
-import { hapusAkun, setAktifAkun, ubahAkun } from "./actions";
+import { buatAkun, hapusAkun, setAktifAkun, setelUlangSandi, ubahAkun } from "./actions";
+import { AkunDialog } from "./akun-dialog";
 
 export type BarisPengguna = {
     id: string;
@@ -57,6 +58,8 @@ export function PenggunaTabel({
 }) {
     const [diubah, setDiubah] = React.useState<BarisPengguna | null>(null);
     const [dihapus, setDihapus] = React.useState<BarisPengguna | null>(null);
+    const [tambah, setTambah] = React.useState(false);
+    const [disetel, setDisetel] = React.useState<BarisPengguna | null>(null);
 
     // Sakelar aktif tidak punya dialog tempat menaruh pesan galatnya, jadi
     // pesannya naik ke sini - satu tempat di atas tabel, terbaca dari baris
@@ -87,6 +90,11 @@ export function PenggunaTabel({
                     placeholder="Cari nama atau email"
                     ariaLabel="Cari pengguna"
                 />
+                <Button onClick={() => setTambah(true)} className="h-9.5 shrink-0">
+                    <Plus />
+                    <span className="hidden sm:inline">Tambah Akun</span>
+                    <span className="sr-only sm:hidden">Tambah akun</span>
+                </Button>
             </div>
 
             {galat && <FormAlert>{galat}</FormAlert>}
@@ -120,6 +128,7 @@ export function PenggunaTabel({
                                         akun={akun}
                                         idSaya={idSaya}
                                         onUbah={setDiubah}
+                                        onSetel={setDisetel}
                                         onHapus={setDihapus}
                                     />
                                 </div>
@@ -201,6 +210,7 @@ export function PenggunaTabel({
                                                 akun={akun}
                                                 idSaya={idSaya}
                                                 onUbah={setDiubah}
+                                                onSetel={setDisetel}
                                                 onHapus={setDihapus}
                                             />
                                         </TableCell>
@@ -266,6 +276,61 @@ export function PenggunaTabel({
                 labelMenyimpan="Menghapus"
                 merusak
             />
+
+            <AkunDialog
+                key={tambah ? "tambah" : "tambah-tertutup"}
+                terbuka={tambah}
+                onTerbukaBerubah={setTambah}
+                judul="Tambah Akun"
+                keterangan="Akun langsung aktif dengan kata sandi sementara yang ditampilkan satu kali. Alamat email tidak bisa diubah setelah akun terbentuk."
+                aksi={buatAkun}
+                labelSimpan="Buat Akun"
+                labelMenyimpan="Membuat"
+                catatanSandi="Serahkan kata sandi ini kepada pemiliknya. Ia akan diminta menggantinya sendiri saat pertama kali masuk."
+            >
+                <BidangDialog
+                    id="nama_lengkap"
+                    label="Nama Lengkap"
+                    placeholder="Sari Widyaningrum, S.Pd."
+                    required
+                    autoFocus
+                    maxLength={120}
+                />
+                <BidangDialog
+                    id="email"
+                    label="Alamat Email"
+                    type="email"
+                    placeholder="nama@smpn14.sch.id"
+                    required
+                    petunjuk="Dipakai untuk masuk, dan tidak bisa diubah lagi setelah ini."
+                />
+                <BidangPilih
+                    id="role"
+                    label="Peran"
+                    defaultValue="pegawai"
+                    opsi={PERAN.map((p) => ({ nilai: p, label: LABEL_PERAN[p] }))}
+                />
+                <BidangPilih
+                    id="unit_kerja_id"
+                    label="Unit Kerja"
+                    petunjuk="Wajib diisi. Pegawai tanpa unit kerja tertahan saat mengajukan permintaan pertamanya."
+                    opsi={unit
+                        .filter((u) => u.aktif)
+                        .map((u) => ({ nilai: u.id, label: u.nama }))}
+                />
+            </AkunDialog>
+
+            <AkunDialog
+                key={`setel-${disetel?.id}`}
+                terbuka={disetel !== null}
+                onTerbukaBerubah={(terbuka) => !terbuka && setDisetel(null)}
+                judul={`Setel ulang sandi ${disetel?.nama_lengkap ?? ""}?`}
+                keterangan="Kata sandi lamanya langsung tidak berlaku, dan pemiliknya diminta membuat kata sandi baru saat masuk berikutnya."
+                aksi={setelUlangSandi.bind(null, disetel?.id ?? "")}
+                labelSimpan="Setel Ulang"
+                labelMenyimpan="Menyetel"
+                catatanSandi="Serahkan kata sandi ini kepada pemiliknya. Kata sandi lamanya sudah tidak berlaku."
+            />
         </div>
     );
 }
@@ -319,11 +384,13 @@ function TombolBaris({
     akun,
     idSaya,
     onUbah,
+    onSetel,
     onHapus,
 }: {
     akun: BarisPengguna;
     idSaya: string;
     onUbah: (akun: BarisPengguna) => void;
+    onSetel: (akun: BarisPengguna) => void;
     onHapus: (akun: BarisPengguna) => void;
 }) {
     return (
@@ -337,17 +404,30 @@ function TombolBaris({
                 <Pencil className="text-muted-foreground" strokeWidth={1.6} />
             </Button>
             {akun.id !== idSaya && (
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => onHapus(akun)}
-                    aria-label={`Hapus ${akun.nama_lengkap}`}
-                >
-                    <Trash2
-                        className="text-muted-foreground"
-                        strokeWidth={1.6}
-                    />
-                </Button>
+                <>
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => onSetel(akun)}
+                        aria-label={`Setel ulang sandi ${akun.nama_lengkap}`}
+                    >
+                        <KeyRound
+                            className="text-muted-foreground"
+                            strokeWidth={1.6}
+                        />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => onHapus(akun)}
+                        aria-label={`Hapus ${akun.nama_lengkap}`}
+                    >
+                        <Trash2
+                            className="text-muted-foreground"
+                            strokeWidth={1.6}
+                        />
+                    </Button>
+                </>
             )}
         </div>
     );
