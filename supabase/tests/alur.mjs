@@ -977,6 +977,19 @@ await as(PGW, async () => {
         d.affectedRows === 0,
         `(${d.affectedRows} baris)`,
     );
+
+    // ubah_profil sebelumnya lolos tanpa syarat aktif di cabang
+    // "id = auth.uid()" - akun nonaktif bisa saja masih menulis ulang
+    // nama_lengkap-nya sendiri selamanya, sebab nonaktif tidak mencabut
+    // token Supabase Auth yang sedang dipegangnya.
+    const namaNonaktif = await db.query(
+        `update public.profil set nama_lengkap = 'Diubah diam-diam' where id = '${PGW}'`,
+    );
+    ok(
+        "akun nonaktif mengubah nama profil sendiri: nol baris, tanpa galat",
+        namaNonaktif.affectedRows === 0,
+        `(${namaNonaktif.affectedRows} baris)`,
+    );
 });
 
 await as(TU, async () => {
@@ -993,6 +1006,15 @@ await as(PGW, async () => {
         "diaktifkan lagi -> boleh mengubah draftnya",
         u.affectedRows === 1,
         `(${u.affectedRows} baris)`,
+    );
+
+    const namaAktif = await db.query(
+        `update public.profil set nama_lengkap = 'Nama diperbarui sendiri' where id = '${PGW}'`,
+    );
+    ok(
+        "diaktifkan lagi -> boleh mengubah nama profil sendiri",
+        namaAktif.affectedRows === 1,
+        `(${namaAktif.affectedRows} baris)`,
     );
 
     await db.query(

@@ -22,6 +22,11 @@ const PANJANG_NAMA = 120;
 
 const PERAN: readonly Role[] = ["pegawai", "pengurus_barang", "tata_usaha"];
 
+// Bentuk saja, bukan validitas sungguhan - cukup untuk memastikan id tidak
+// membawa karakter yang bisa merusak string filter .or() di hapusAkun.
+const BENTUK_UUID =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const PESAN: PesanKhas = {
     ganda: "Data itu sudah dipakai akun lain.",
     terpakai: GALAT_RIWAYAT,
@@ -151,6 +156,16 @@ export async function setAktifAkun(
 export async function hapusAkun(id: string): Promise<HasilAksi> {
     const saya = await pastikanTataUsaha();
 
+    // id ditaruh mentah ke dalam string filter .or() di bawah, dan
+    // PostgREST menerimanya sebagai string filter, bukan nilai
+    // berparameter. Tidak ada celah privilese - pemanggilnya sudah tata
+    // usaha, dan cabang .or() yang berhasil dipalsukan paling banter
+    // membuat pre-check ini over-match lalu menolak penghapusan - tapi ini
+    // kelas bug yang sama dengan yang dicegah siapkanKataKunci().
+    if (!BENTUK_UUID.test(id)) {
+        return { ok: false, galat: "Akun tidak ditemukan." };
+    }
+
     if (id === saya.id) return { ok: false, galat: PESAN_DIRI.hapus };
 
     const supabase = await createClient();
@@ -166,6 +181,33 @@ export async function hapusAkun(id: string): Promise<HasilAksi> {
         return { ok: false, galat: pesanGalatDb(galatRiwayat, PESAN) };
     }
     if (riwayat?.length) return { ok: false, galat: GALAT_RIWAYAT };
+
+    // mutasi_stok.dibuat_oleh dan permintaan_log.oleh berdua "on delete set
+    // null", bukan restrict - tapi set null lewat referential action tetap
+    // berupa UPDATE, dan UPDATE pada kedua tabel itu ditolak
+    // trg_mutasi_append_only / trg_log_append_only (20260825020000_fungsi.sql).
+    // Jadi akun yang pernah mencatat penerimaan atau penyesuaian stok - atau
+    // yang baris permintaan_log-nya masih menyebut dia sebagai "oleh" -
+    // tetap tidak bisa dihapus, walau FK-nya sendiri bilang set null.
+    const { data: mutasi, error: galatMutasi } = await supabase
+        .from("mutasi_stok")
+        .select("id")
+        .eq("dibuat_oleh", id)
+        .limit(1);
+
+    if (galatMutasi) {
+        return { ok: false, galat: pesanGalatDb(galatMutasi, PESAN) };
+    }
+    if (mutasi?.length) return { ok: false, galat: GALAT_RIWAYAT };
+
+    const { data: log, error: galatLog } = await supabase
+        .from("permintaan_log")
+        .select("id")
+        .eq("oleh", id)
+        .limit(1);
+
+    if (galatLog) return { ok: false, galat: pesanGalatDb(galatLog, PESAN) };
+    if (log?.length) return { ok: false, galat: GALAT_RIWAYAT };
 
     const admin = createAdminClient();
     const { error } = await admin.auth.admin.deleteUser(id);

@@ -47,6 +47,12 @@ export async function gantiSandi(
         };
     }
 
+    // Catatan (isu yang diparkir): akun yang memulihkan sandi lewat tautan
+    // recovery bisa mendarat di sini dengan sandi_sementara masih
+    // terpasang - lihat komentar di reset-sandi/actions.ts dekat
+    // updateUser(). Baris di atas lalu memaksa sandi ketiga sekadar untuk
+    // berbeda dari yang baru saja dipilih lewat tautan itu.
+
     const supabase = await createClient();
 
     const { error: galatMasuk } = await supabase.auth.signInWithPassword({

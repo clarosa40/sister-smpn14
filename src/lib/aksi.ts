@@ -72,7 +72,7 @@ export function pesanGalatDb(galat: PostgrestError, khas: PesanKhas): string {
 }
 
 export const GALAT_RIWAYAT =
-    "Akun ini sudah punya riwayat permintaan, jadi tidak bisa dihapus. Nonaktifkan saja.";
+    "Akun ini sudah punya riwayat, jadi tidak bisa dihapus. Nonaktifkan saja.";
 
 /**
  * Pasangan pesanGalatDb untuk galat yang datang dari Supabase Auth.
@@ -105,12 +105,15 @@ export function pesanGalatAuth(galat: AuthError): string {
             break;
     }
 
-    // Penghapusan akun yang tertahan foreign key sampai ke sini sebagai
-    // kegagalan tak terduga dari GoTrue, bukan sebagai kode kata: yang
-    // menolak adalah Postgres, di ujung rantai on delete cascade menuju
-    // profil. Bukan kerusakan - justru penjaga yang membuat riwayat
-    // permintaan lama tetap punya nama pemohon.
-    if (/23503|foreign key|permintaan/i.test(galat.message)) {
+    // Penghapusan akun yang tertahan sampai ke sini sebagai kegagalan tak
+    // terduga dari GoTrue, bukan sebagai kode kata: yang menolak adalah
+    // Postgres, di ujung rantai on delete cascade menuju profil. Dua
+    // bentuknya - foreign key "on delete restrict" (permintaan) dan
+    // trigger append-only yang tersulut oleh UPDATE set-null pada
+    // mutasi_stok/permintaan_log (23503, "foreign key", "permintaan",
+    // "mutasi", "append-only") - bukan kerusakan, justru penjaga yang
+    // membuat riwayat lama tetap punya nama pemiliknya.
+    if (/23503|foreign key|permintaan|mutasi|append-only/i.test(galat.message)) {
         return GALAT_RIWAYAT;
     }
 

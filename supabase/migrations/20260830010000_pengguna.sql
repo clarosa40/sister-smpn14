@@ -1,7 +1,7 @@
 -- =============================================================
 -- SIPB SMPN 14 - Kelola pengguna
 --
--- Tiga hal: helper is_aktif(), gigi untuk profil.aktif di keempat
+-- Tiga hal: helper is_aktif(), gigi untuk profil.aktif di kelima
 -- policy jalur pegawai, dan view yang menyatukan profil dengan
 -- alamat email milik Supabase Auth.
 -- =============================================================
@@ -77,6 +77,17 @@ alter policy susun_permintaan_item on public.permintaan_item
         and p.status = 'draft'
     )
   );
+
+-- Cabang "id = auth.uid()" pada ubah_profil sebelumnya lolos tanpa syarat
+-- aktif, jadi akun yang baru saja dinonaktifkan tetap bisa menulis ulang
+-- nama_lengkap-nya sendiri di baris profil - tanpa batas waktu, sebab
+-- menonaktifkan akun tidak mencabut token Supabase Auth yang sedang
+-- dipegangnya. Digigit dengan cara yang sama seperti keempat policy di
+-- atas: is_tu() tetap lolos tanpa syarat aktif, sebab tata usaha
+-- menyunting baris orang lain, bukan barisnya sendiri.
+alter policy ubah_profil on public.profil
+  using ((id = (select auth.uid()) and public.is_aktif()) or public.is_tu())
+  with check ((id = (select auth.uid()) and public.is_aktif()) or public.is_tu());
 
 -- -------------------------------------------------------------
 -- View pengguna

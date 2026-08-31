@@ -44,10 +44,16 @@ export async function GET(request: NextRequest) {
         },
     );
 
-    // Galatnya sengaja tidak dihiraukan. Token yang sudah tidak sah membuat
-    // panggilan ke server Auth gagal, tetapi sesi lokal tetap dibuang - dan
-    // membuang sesi lokal itulah seluruh gunanya berkas ini.
-    await supabase.auth.signOut();
+    // Galatnya sengaja tidak mengubah alur. Token yang sudah tidak sah
+    // membuat panggilan ke server Auth gagal, tetapi sesi lokal tetap
+    // dibuang - dan membuang sesi lokal itulah seluruh gunanya berkas ini.
+    // Tetap dicatat ke log: ada isu yang diparkir soal signOut() yang bisa
+    // gagal membuang sesi lokal sendiri saat server Auth balas 5xx, dan
+    // baris log ini satu-satunya jejak yang akan tersisa untuk itu.
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        console.error("[keluar]", error.code, error.status, error.message);
+    }
 
     return response;
 }
