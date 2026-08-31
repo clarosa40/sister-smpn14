@@ -10,13 +10,24 @@ const JEDA_KETIK = 300;
 /**
  * Kotak pencarian yang menulis kata kuncinya ke URL, bukan ke state komponen.
  * Dengan begitu hasil pencarian bisa ditautkan dan dimuat ulang, dan halaman
- * server yang tetap memegang datanya - tidak ada salinan daftar barang di
- * peramban yang bisa basi.
+ * server yang tetap memegang datanya - tidak ada salinan daftar di peramban
+ * yang bisa basi.
  *
  * Nilai awal datang sebagai prop, bukan dari useSearchParams(), supaya
  * komponen ini tidak menuntut batas Suspense di sekelilingnya.
  */
-export function Pencarian({ awal }: { awal: string }) {
+export function Pencarian({
+    awal,
+    jalur,
+    placeholder,
+    ariaLabel,
+}: {
+    awal: string;
+    /** Alamat halaman pemakainya, mis. "/master-barang". */
+    jalur: string;
+    placeholder: string;
+    ariaLabel: string;
+}) {
     const router = useRouter();
     const [nilai, setNilai] = React.useState(awal);
     const jeda = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -28,13 +39,11 @@ export function Pencarian({ awal }: { awal: string }) {
             // dari halaman pertama. Berpindah kata kunci sambil tetap di
             // halaman 4 hampir selalu berarti mendarat di daftar kosong.
             router.replace(
-                bersih
-                    ? `/master-barang?cari=${encodeURIComponent(bersih)}`
-                    : "/master-barang",
+                bersih ? `${jalur}?cari=${encodeURIComponent(bersih)}` : jalur,
                 { scroll: false },
             );
         },
-        [router],
+        [router, jalur],
     );
 
     const ketik = (kata: string) => {
@@ -67,8 +76,8 @@ export function Pencarian({ awal }: { awal: string }) {
                 type="search"
                 value={nilai}
                 onChange={(e) => ketik(e.target.value)}
-                placeholder="Cari kode atau nama barang"
-                aria-label="Cari barang"
+                placeholder={placeholder}
+                aria-label={ariaLabel}
                 className="h-9.5 pr-9 pl-8.5"
             />
             {nilai && (

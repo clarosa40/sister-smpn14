@@ -79,6 +79,17 @@ export async function simpanKataSandi(
         };
     }
 
+    // Isu yang diparkir, belum dibetulkan: updateUser() di sini berjalan
+    // lewat sesi pengguna sendiri, yang tidak bisa menulis app_metadata.
+    // Kalau akun ini datang dengan sandi_sementara masih terpasang - dibuat
+    // atau disetel ulang lewat /pengguna, lalu memulihkan lewat tautan
+    // recovery alih-alih memakai sandi sementaranya - penanda itu tetap
+    // menempel walau sandinya sudah sungguh-sungguh baru, dan
+    // getUserOrRedirect() akan tetap membawanya ke /ganti-sandi. Membersihkan
+    // penanda di sini butuh klien service-role kelima, yang sengaja tidak
+    // ditambahkan (lihat createAdminClient()). Jangkauannya kini rendah -
+    // tautan recovery hanya terbit lewat `npm run reset:tautan`, sebab SMTP
+    // belum terpasang - jadi ini dibiarkan sebagai catatan, bukan dibetulkan.
     const { error: galatUpdate } = await supabase.auth.updateUser({
         password: sandi,
     });

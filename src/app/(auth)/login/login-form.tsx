@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
-export function LoginForm() {
+export function LoginForm({ nonaktif = false }: { nonaktif?: boolean }) {
     const router = useRouter();
     const [galat, setGalat] = React.useState<string | null>(null);
     const [pending, setPending] = React.useState(false);
@@ -43,7 +43,15 @@ export function LoginForm() {
 
     return (
         <form onSubmit={kirim} className="flex flex-col gap-4.5">
-            {galat && <FormAlert>{galat}</FormAlert>}
+            {galat ? (
+                <FormAlert>{galat}</FormAlert>
+            ) : (
+                nonaktif && (
+                    <FormAlert>
+                        Akun Anda dinonaktifkan. Hubungi tata usaha.
+                    </FormAlert>
+                )
+            )}
 
             <AuthField id="email" label="Alamat Email">
                 <AuthInput

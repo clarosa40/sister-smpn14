@@ -26,7 +26,7 @@ let siapa = 'guru';
 
 await db.exec(`
 create schema if not exists auth;
-create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb);
+create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb, raw_app_meta_data jsonb);
 create or replace function auth.uid() returns uuid language sql stable as $fn$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $fn$;
 create role anon; create role authenticated; create role service_role;`);

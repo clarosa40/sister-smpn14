@@ -13,7 +13,7 @@ import {
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 import { buatBarang, hapusBarang, ubahBarang } from "./actions";
-import { Pencarian } from "./pencarian";
+import { Pencarian } from "@/components/admin/pencarian";
 
 export type BarisBarang = {
     id: string;
@@ -41,7 +41,12 @@ export function BarangTabel({
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2.5">
-                <Pencarian awal={cari} />
+                <Pencarian
+                    awal={cari}
+                    jalur="/master-barang"
+                    placeholder="Cari kode atau nama barang"
+                    ariaLabel="Cari barang"
+                />
                 <Button
                     onClick={() => setTambah(true)}
                     className="h-9.5 shrink-0"
