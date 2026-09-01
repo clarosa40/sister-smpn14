@@ -79,6 +79,10 @@ async function ringkasanPegawai(userId: string) {
         console.error("[beranda]", status.error.code, status.error.message);
     }
 
+    if (aktivitas.error) {
+        console.error("[beranda]", aktivitas.error.code, aktivitas.error.message);
+    }
+
     const daftar = (status.data ?? []).map(
         (r) => r.status as StatusPermintaan,
     );
