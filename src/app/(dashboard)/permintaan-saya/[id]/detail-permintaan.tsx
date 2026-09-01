@@ -156,6 +156,27 @@ export function DetailPermintaan({
                                             menunggu={menunggu}
                                             onUbah={(n) => setel(item, n)}
                                         />
+                                        {/* Jalur keluar independen dari stepper: barang
+                                            yang stoknya habis setelah masuk keranjang
+                                            menolak setiap UPDATE dari tombol +/-
+                                            (trigger siapkan_permintaan_item mengecek
+                                            stok pada UPDATE juga), jadi jumlah tidak
+                                            pernah bisa diturunkan sampai 0 lewat
+                                            stepper. Tombol ini memanggil setel(item, 0)
+                                            langsung, yang berujung DELETE - tidak
+                                            pernah digerbangi trigger tersebut. */}
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            disabled={menunggu}
+                                            onClick={() => setel(item, 0)}
+                                            aria-label={`Keluarkan ${item.nama_barang_snapshot} dari keranjang`}
+                                        >
+                                            <Trash2
+                                                className="text-muted-foreground"
+                                                strokeWidth={1.6}
+                                            />
+                                        </Button>
                                     </>
                                 ) : null}
                             </li>

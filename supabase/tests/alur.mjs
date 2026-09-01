@@ -1301,6 +1301,18 @@ await as(PGW, async () => {
         u.affectedRows === 0,
         `(${u.affectedRows} baris)`,
     );
+
+    // susun_permintaan_item juga menyempitkan ke status draft - permintaan
+    // yang sudah disetujui membuat UPDATE ini tidak menemukan baris sama
+    // sekali, sekalipun baris itu milik pemohon sendiri.
+    const ui = await db.query(
+        `update public.permintaan_item set jumlah_diminta = 9 where permintaan_id = '${permE}'`,
+    );
+    ok(
+        "baris permintaan yang sudah disetujui tidak bisa diubah pemohonnya: nol baris, tanpa galat",
+        ui.affectedRows === 0,
+        `(${ui.affectedRows} baris)`,
+    );
 });
 
 await as(PGW2, async () => {
@@ -1335,6 +1347,17 @@ await as(PGW2, async () => {
         "log permintaan orang lain ikut tak terlihat",
         lg.length === 0,
         `(${lg.length} baris)`,
+    );
+
+    // pemohon_id di susun_permintaan_item bukan cuma status: pegawai lain
+    // yang bukan pemiliknya sama sekali juga tidak menemukan baris ini.
+    const ui2 = await db.query(
+        `update public.permintaan_item set jumlah_diminta = 9 where permintaan_id = '${permE}'`,
+    );
+    ok(
+        "pegawai lain tidak bisa mengubah baris permintaan orang lain: nol baris, tanpa galat",
+        ui2.affectedRows === 0,
+        `(${ui2.affectedRows} baris)`,
     );
 });
 

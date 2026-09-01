@@ -31,7 +31,7 @@ export default async function DetailPermintaanPage({
 
     // Kalau id-nya bukan uuid, Postgres menolaknya (22P02) dan data-nya
     // null - jalur yang sama dengan permintaan yang memang tidak ada.
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from("permintaan")
         .select(
             `id, nomor, status, keperluan, tanggal_dibutuhkan, catatan_pemohon,
@@ -41,13 +41,31 @@ export default async function DetailPermintaanPage({
         .eq("id", id)
         .maybeSingle<BarisDetail>();
 
+    if (error) {
+        console.error("[detail permintaan]", error.code, error.message);
+        return (
+            <p className="mx-auto max-w-3xl rounded-xl border border-destructive/25 bg-destructive/8 px-5 py-8 text-center text-[13px] text-destructive">
+                Detail permintaan gagal dimuat. Muat ulang halamannya
+                sebentar lagi.
+            </p>
+        );
+    }
+
     if (!data) notFound();
 
-    const { data: log } = await supabase
+    const { data: log, error: errorLog } = await supabase
         .from("permintaan_log")
         .select("id, status_ke, created_at")
         .eq("permintaan_id", id)
         .order("created_at");
+
+    if (errorLog) {
+        console.error(
+            "[detail permintaan] log",
+            errorLog.code,
+            errorLog.message,
+        );
+    }
 
     const item = [...(data.permintaan_item ?? [])].sort((a, b) =>
         a.nama_barang_snapshot.localeCompare(b.nama_barang_snapshot, "id"),
