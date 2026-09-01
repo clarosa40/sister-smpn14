@@ -12,6 +12,7 @@ const PGW = "33333333-3333-3333-3333-333333333333"; // pegawai
 const SPIDOL = "Spidol whiteboard hitam";
 const HVS = "Kertas HVS A4 70 gram";
 const PEL = "Kain pel";
+const PULPEN = "Pulpen tinta hitam";
 
 const db = new PGlite();
 let pass = 0,
@@ -99,6 +100,7 @@ const cariBarang = async (nama) =>
 const spidol = await cariBarang(SPIDOL);
 const hvs = await cariBarang(HVS);
 const pel = await cariBarang(PEL);
+const pulpen = await cariBarang(PULPEN);
 
 console.log("\n— barang masuk —");
 await as(TU, async () => {
@@ -1061,6 +1063,273 @@ await as(PGW, async () => {
                 `update public.profil set role = 'tata_usaha' where id = '${PGW}'`,
             ),
         "tata usaha",
+    );
+});
+
+// Paling akhir, seperti dua bagian sebelumnya: di sini stok kain pel
+// bertambah, akun keempat lahir, dan permintaan baru terbit - semuanya
+// hal yang dihitung persis oleh pemeriksaan di atas.
+console.log("\n— permintaan pegawai —");
+
+// Pegawai kedua. Dibuat di sini, bukan di setup, karena bagian pengguna
+// menghitung tepat tiga akun.
+const PGW2 = "44444444-4444-4444-4444-444444444444";
+await db.exec(`
+insert into auth.users (id, email) values ('${PGW2}', 'guru.mtk@smpn14.sch.id');
+update public.profil set
+  unit_kerja_id = (select id from public.unit_kerja where nama = 'Guru')
+  where id = '${PGW2}';`);
+
+// Kain pel diberi stok supaya bagian ini punya barang tersedia kedua:
+// satu untuk keranjang, satu lagi untuk membuktikan bahwa keranjang yang
+// sudah diajukan tidak bisa ditambah. Tanpa itu, penolakan RLS akan
+// tertutup lebih dulu oleh penolakan "barang kosong" dari trigger.
+await as(PGR, async () => {
+    await db.exec(`
+    insert into public.penerimaan (no_dokumen) values ('INV-9002');
+    insert into public.penerimaan_item (penerimaan_id, barang_id, jumlah)
+    select p.id, '${pel}', 20 from public.penerimaan p where p.no_dokumen = 'INV-9002';`);
+    await db.query(
+        `select public.catat_penerimaan((select id from public.penerimaan where no_dokumen = 'INV-9002'))`,
+    );
+});
+
+let keranjang;
+await as(PGW, async () => {
+    // keperluan dibiarkan kosong: begitulah halaman katalog membuka draft,
+    // dan kolomnya not null tanpa pemeriksaan isi. Keperluannya baru
+    // ditanyakan di dialog pengajuan.
+    await db.exec(`insert into public.permintaan (keperluan) values ('');`);
+    keranjang = (
+        await db.query(
+            `select id, pemohon_id, unit_kerja_id, status, nomor from public.permintaan
+             where keperluan = '' order by created_at desc limit 1`,
+        )
+    ).rows[0];
+    ok(
+        "keranjang lahir sebagai draft milik pemohonnya, tanpa nomor",
+        keranjang.status === "draft" &&
+            keranjang.pemohon_id === PGW &&
+            keranjang.nomor === null,
+        JSON.stringify(keranjang),
+    );
+    ok(
+        "unit kerja ikut tersalin dari profil",
+        keranjang.unit_kerja_id !== null,
+        String(keranjang.unit_kerja_id),
+    );
+
+    await expectError(
+        "barang berstok nol ditolak saat dimasukkan keranjang",
+        () =>
+            db.query(
+                `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+                 values ('${keranjang.id}', '${pulpen}', 1)`,
+            ),
+        "kosong",
+    );
+
+    await expectError(
+        "keranjang kosong tidak bisa diajukan",
+        () =>
+            db.query(
+                `update public.permintaan set status = 'diajukan',
+                 keperluan = 'Coba ajukan tanpa barang' where id = '${keranjang.id}'`,
+            ),
+        "permintaan kosong",
+    );
+
+    await expectError(
+        "permintaan tidak bisa lahir langsung berstatus diajukan",
+        () =>
+            db.query(
+                `insert into public.permintaan (keperluan, status)
+                 values ('Lompat draft', 'diajukan')`,
+            ),
+        "permintaan kosong",
+    );
+
+    await db.query(
+        `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+         values ('${keranjang.id}', '${spidol}', 3)`,
+    );
+    const it = (
+        await db.query(
+            `select nama_barang_snapshot, satuan_snapshot, jumlah_diminta
+             from public.permintaan_item where permintaan_id = '${keranjang.id}'`,
+        )
+    ).rows[0];
+    ok(
+        "snapshot nama dan satuan dibekukan saat barang masuk keranjang",
+        it.nama_barang_snapshot === SPIDOL && it.satuan_snapshot === "pcs",
+        JSON.stringify(it),
+    );
+
+    await expectError(
+        "barang yang sama tidak bisa masuk keranjang dua kali",
+        () =>
+            db.query(
+                `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+                 values ('${keranjang.id}', '${spidol}', 1)`,
+            ),
+        "duplicate key",
+    );
+
+    await db.query(
+        `update public.permintaan set status = 'diajukan',
+         keperluan = 'Spidol untuk ulangan harian' where id = '${keranjang.id}'`,
+    );
+    const p = (
+        await db.query(
+            `select nomor, status, diajukan_at from public.permintaan where id = '${keranjang.id}'`,
+        )
+    ).rows[0];
+    ok(
+        "keranjang berisi boleh diajukan dan mendapat nomor SPB",
+        p.status === "diajukan" &&
+            /^SPB-\d{6}$/.test(p.nomor) &&
+            p.diajukan_at !== null,
+        JSON.stringify(p),
+    );
+
+    const log = (
+        await db.query(
+            `select status_ke from public.permintaan_log where permintaan_id = $1 order by created_at`,
+            [keranjang.id],
+        )
+    ).rows;
+    ok(
+        "log mencatat draft lalu diajukan",
+        log.length === 2 && log[1].status_ke === "diajukan",
+        JSON.stringify(log.map((l) => l.status_ke)),
+    );
+
+    await expectError(
+        "barang tidak bisa ditambahkan lagi setelah permintaan diajukan",
+        () =>
+            db.query(
+                `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+                 values ('${keranjang.id}', '${pel}', 1)`,
+            ),
+        "row-level security",
+    );
+
+    // DELETE yang ditolak RLS tidak memunculkan galat sama sekali. Itu
+    // sebabnya server action memeriksa baris yang kembali dari .select(),
+    // bukan hanya kolom error.
+    const d = await db.query(
+        `delete from public.permintaan where id = '${keranjang.id}'`,
+    );
+    ok(
+        "permintaan yang sudah diajukan tidak bisa dihapus pemohonnya: nol baris, tanpa galat",
+        d.affectedRows === 0,
+        `(${d.affectedRows} baris)`,
+    );
+
+    await db.query(
+        `update public.permintaan set status = 'dibatalkan' where id = '${keranjang.id}'`,
+    );
+    const b = (
+        await db.query(
+            `select status from public.permintaan where id = '${keranjang.id}'`,
+        )
+    ).rows[0];
+    ok(
+        "pemohon boleh membatalkan permintaan yang masih diajukan",
+        b.status === "dibatalkan",
+        b.status,
+    );
+
+    // Keranjang kosong memang boleh dihapus - itulah yang dipakai halaman
+    // detail saat barang terakhir dikeluarkan.
+    await db.query(`insert into public.permintaan (keperluan) values ('');`);
+    const kosong = (
+        await db.query(
+            `select id from public.permintaan where keperluan = '' and status = 'draft'
+             order by created_at desc limit 1`,
+        )
+    ).rows[0].id;
+    const h = await db.query(
+        `delete from public.permintaan where id = '${kosong}'`,
+    );
+    ok(
+        "draft kosong boleh dihapus pemohonnya",
+        h.affectedRows === 1,
+        `(${h.affectedRows} baris)`,
+    );
+});
+
+let permE;
+await as(PGW, async () => {
+    await db.query(`insert into public.permintaan (keperluan) values ('');`);
+    permE = (
+        await db.query(
+            `select id from public.permintaan where keperluan = '' and status = 'draft'
+             order by created_at desc limit 1`,
+        )
+    ).rows[0].id;
+    await db.query(
+        `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+         values ('${permE}', '${pel}', 2)`,
+    );
+    await db.query(
+        `update public.permintaan set status = 'diajukan',
+         keperluan = 'Kain pel untuk piket kelas' where id = '${permE}'`,
+    );
+});
+
+await as(TU, async () => {
+    await db.query(
+        `update public.permintaan set status = 'disetujui' where id = '${permE}'`,
+    );
+});
+
+await as(PGW, async () => {
+    // Bukan galat: policy ubah_permintaan menyempitkan UPDATE milik pemohon
+    // ke status draft dan diajukan, jadi permintaan yang sudah disetujui
+    // sekadar tidak terlihat oleh update ini.
+    const u = await db.query(
+        `update public.permintaan set status = 'dibatalkan' where id = '${permE}'`,
+    );
+    ok(
+        "permintaan yang sudah disetujui tidak bisa dibatalkan pemohon: nol baris, tanpa galat",
+        u.affectedRows === 0,
+        `(${u.affectedRows} baris)`,
+    );
+});
+
+await as(PGW2, async () => {
+    const p = (
+        await db.query(
+            `select id from public.permintaan where id = '${permE}'`,
+        )
+    ).rows;
+    ok(
+        "pegawai lain tidak melihat permintaan milik orang lain",
+        p.length === 0,
+        `(${p.length} baris)`,
+    );
+
+    const it = (
+        await db.query(
+            `select id from public.permintaan_item where permintaan_id = '${permE}'`,
+        )
+    ).rows;
+    ok(
+        "baris permintaan orang lain ikut tak terlihat",
+        it.length === 0,
+        `(${it.length} baris)`,
+    );
+
+    const lg = (
+        await db.query(
+            `select id from public.permintaan_log where permintaan_id = '${permE}'`,
+        )
+    ).rows;
+    ok(
+        "log permintaan orang lain ikut tak terlihat",
+        lg.length === 0,
+        `(${lg.length} baris)`,
     );
 });
 
