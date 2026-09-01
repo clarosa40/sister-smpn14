@@ -708,6 +708,11 @@ await expectError(
     "append-only",
 );
 await expectError(
+    "mutasi_stok tidak bisa dihapus lewat SQL editor",
+    () => db.exec(`delete from public.mutasi_stok`),
+    "append-only",
+);
+await expectError(
     "permintaan_log append-only walau lewat SQL editor",
     () => db.exec(`delete from public.permintaan_log`),
     "append-only",
