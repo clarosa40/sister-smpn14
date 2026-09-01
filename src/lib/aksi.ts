@@ -38,6 +38,19 @@ export const GALAT_HILANG =
 export const pastikanTataUsaha = async (): Promise<User> =>
     getUserOrRedirect(["tata_usaha"]);
 
+/**
+ * Pasangan pastikanTataUsaha untuk halaman pegawai. Peran lain tidak
+ * ditolak dengan pesan galat melainkan dipulangkan ke /beranda oleh
+ * getUserOrRedirect - laman yang pasti terlihat oleh peran mana pun.
+ *
+ * Sama seperti pasangannya, ini lapis kedua. Gerbangnya adalah policy
+ * buat_permintaan, ubah_permintaan, hapus_permintaan, dan
+ * susun_permintaan_item, yang tetap berlaku kalau pemeriksaan ini kelak
+ * terlupa dipasang di sebuah aksi baru.
+ */
+export const pastikanPegawai = async (): Promise<User> =>
+    getUserOrRedirect(["pegawai"]);
+
 /** Isi satu kolom formulir, sudah dirapikan ujung-ujungnya. */
 export const teks = (formData: FormData, nama: string): string =>
     String(formData.get(nama) ?? "").trim();
