@@ -73,10 +73,44 @@ const KALIMAT_LOG: Record<StatusPermintaan, string> = {
 export const kalimatLog = (status: StatusPermintaan): string =>
     KALIMAT_LOG[status];
 
+/**
+ * Pelaku setiap status sebagai partisip telanjang, tanpa menyebut siapa.
+ * Pasangannya kalimatLogBernama() yang menyambungnya dengan "oleh" dan
+ * sebuah nama - dan sambungan itu terbaca benar untuk ketujuhnya:
+ * "Keranjang dibuat oleh Sari Wijaya", "Ditolak oleh Budi Santoso".
+ *
+ * Ada dua catatan status di berkas ini, dan itu disengaja. KALIMAT_LOG
+ * dipakai di layar pegawai, tempat nama penyetuju memang tidak
+ * terjangkau (policy baca_profil). PELAKU_LOG dipakai di layar tata
+ * usaha, tempat nama itu justru inti persoalannya: dengan dua akun tata
+ * usaha, "Disetujui tata usaha" tidak menjawab apa pun.
+ */
+const PELAKU_LOG: Record<StatusPermintaan, string> = {
+    draft: "Keranjang dibuat",
+    diajukan: "Diajukan",
+    disetujui: "Disetujui",
+    siap_diambil: "Barang disiapkan",
+    selesai: "Barang diserahkan",
+    ditolak: "Ditolak",
+    dibatalkan: "Dibatalkan",
+};
+
+/**
+ * Nama kosong jatuh ke kalimatLog(), bukan ke "oleh —". Baris log yang
+ * penulisnya sudah dihapus (permintaan_log.oleh adalah on delete set
+ * null) karena itu tetap terbaca, dan kedua penyusun kalimat ini tidak
+ * pernah bisa berselisih tentang baris yang sama.
+ */
+export const kalimatLogBernama = (
+    status: StatusPermintaan,
+    nama: string | null | undefined,
+): string => (nama ? `${PELAKU_LOG[status]} oleh ${nama}` : kalimatLog(status));
+
 /** Batas yang ditegakkan server; isian di layar hanya mencerminkannya. */
 export const MAKS_JUMLAH = 999;
 export const PANJANG_KEPERLUAN = 200;
 export const PANJANG_CATATAN = 500;
+export const PANJANG_ALASAN = 500;
 
 export const GALAT_KERANJANG_HILANG =
     "Keranjang itu sudah tidak ada, atau isinya sudah berubah. Muat ulang halamannya.";

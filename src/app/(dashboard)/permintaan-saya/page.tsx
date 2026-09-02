@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 /**
  * Tanpa paginasi, dengan sengaja: seorang pegawai mengajukan puluhan
  * permintaan, bukan ribuan. Kalau kelak daftarnya tumbuh melewati itu,
- * Paginasi di master-barang/page.tsx adalah polanya.
+ * Paginasi di components/admin/paginasi.tsx adalah polanya.
  */
 export default async function PermintaanSayaPage() {
     const user = await pastikanPegawai();

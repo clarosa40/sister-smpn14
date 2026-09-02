@@ -1,7 +1,5 @@
-import { Badge } from "@/components/ui/badge";
+import { LencanaStatus } from "@/components/permintaan-parts";
 import {
-    LABEL_STATUS,
-    NADA_STATUS,
     tanggalPanjang,
     type Draft,
     type StatusPermintaan,
@@ -17,23 +15,6 @@ export type BarisPermintaan = {
     created_at: string;
     permintaan_item: { id: string }[];
 };
-
-/**
- * Lencana status, satu bentuk untuk daftar dan halaman detail. Nada
- * "outline" dipakai untuk status yang sudah selesai berjalan, jadi
- * teksnya diredupkan sekalian - sama seperti LencanaAktif di pengguna.
- */
-export function LencanaStatus({ status }: { status: StatusPermintaan }) {
-    const nada = NADA_STATUS[status];
-    return (
-        <Badge
-            variant={nada}
-            className={nada === "outline" ? "text-muted-foreground" : ""}
-        >
-            {LABEL_STATUS[status]}
-        </Badge>
-    );
-}
 
 export function DaftarPermintaan({
     draft,

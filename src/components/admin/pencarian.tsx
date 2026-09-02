@@ -23,7 +23,7 @@ export function Pencarian({
     ariaLabel,
 }: {
     awal: string;
-    /** Alamat halaman pemakainya, mis. "/master-barang". */
+    /** Alamat halaman pemakainya, mis. "/master-barang" - boleh berkueri. */
     jalur: string;
     placeholder: string;
     ariaLabel: string;
@@ -38,8 +38,15 @@ export function Pencarian({
             // `hal` sengaja tidak dibawa: hasil pencarian baru selalu mulai
             // dari halaman pertama. Berpindah kata kunci sambil tetap di
             // halaman 4 hampir selalu berarti mendarat di daftar kosong.
+            //
+            // `jalur` boleh sudah membawa kuerinya sendiri - Riwayat
+            // persetujuan memakainya untuk mempertahankan ?lihat=riwayat,
+            // baik saat kata kunci ditulis maupun saat dikosongkan.
+            const pemisah = jalur.includes("?") ? "&" : "?";
             router.replace(
-                bersih ? `${jalur}?cari=${encodeURIComponent(bersih)}` : jalur,
+                bersih
+                    ? `${jalur}${pemisah}cari=${encodeURIComponent(bersih)}`
+                    : jalur,
                 { scroll: false },
             );
         },

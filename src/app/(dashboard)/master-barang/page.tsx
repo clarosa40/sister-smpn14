@@ -1,8 +1,7 @@
+import { Paginasi } from "@/components/admin/paginasi";
 import { pastikanTataUsaha, siapkanKataKunci } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BarangTabel, type BarisBarang } from "./barang-tabel";
 
@@ -90,90 +89,15 @@ export default async function MasterBarangPage({
 
             {total > 0 && (
                 <Paginasi
-                    cari={cari}
                     halaman={halaman}
                     jumlahHalaman={jumlahHalaman}
                     dari={dari}
                     ditampilkan={daftar.data?.length ?? 0}
                     total={total}
+                    satuan="barang"
+                    href={(h) => alamatDaftar(cari, h)}
                 />
             )}
         </div>
-    );
-}
-
-function Paginasi({
-    cari,
-    halaman,
-    jumlahHalaman,
-    dari,
-    ditampilkan,
-    total,
-}: {
-    cari: string;
-    halaman: number;
-    jumlahHalaman: number;
-    dari: number;
-    ditampilkan: number;
-    total: number;
-}) {
-    return (
-        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <p>
-                Menampilkan {dari + 1}–{dari + ditampilkan} dari {total} barang
-            </p>
-
-            {jumlahHalaman > 1 && (
-                <div className="flex shrink-0 items-center gap-1.5">
-                    <TautanHalaman
-                        href={alamatDaftar(cari, halaman - 1)}
-                        aktif={halaman > 1}
-                    >
-                        Sebelumnya
-                    </TautanHalaman>
-                    <span className="px-1 tabular-nums">
-                        {halaman} / {jumlahHalaman}
-                    </span>
-                    <TautanHalaman
-                        href={alamatDaftar(cari, halaman + 1)}
-                        aktif={halaman < jumlahHalaman}
-                    >
-                        Berikutnya
-                    </TautanHalaman>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function TautanHalaman({
-    href,
-    aktif,
-    children,
-}: {
-    href: string;
-    aktif: boolean;
-    children: React.ReactNode;
-}) {
-    const kelas =
-        "rounded-md border border-border px-2.5 py-1.5 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
-
-    // Batas daftar disajikan sebagai teks mati, bukan tautan yang tidak
-    // menuju ke mana-mana: pembaca layar ikut tahu tombolnya memang habis.
-    if (!aktif) {
-        return (
-            <span
-                aria-disabled
-                className={cn(kelas, "opacity-40")}
-            >
-                {children}
-            </span>
-        );
-    }
-
-    return (
-        <Link href={href} scroll={false} className={cn(kelas, "hover:bg-muted hover:text-foreground")}>
-            {children}
-        </Link>
     );
 }

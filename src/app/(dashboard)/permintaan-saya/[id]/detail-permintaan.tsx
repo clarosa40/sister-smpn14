@@ -18,7 +18,7 @@ import { ArrowLeft, Plus, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { LencanaStatus } from "../daftar-permintaan";
+import { BarisKeterangan, LencanaStatus } from "@/components/permintaan-parts";
 import {
     ajukanPermintaan,
     batalkanPermintaan,
@@ -316,8 +316,8 @@ export function DetailPermintaan({
 function Keterangan({ permintaan }: { permintaan: BarisDetail }) {
     return (
         <dl className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
-            <Baris label="Keperluan" nilai={permintaan.keperluan} />
-            <Baris
+            <BarisKeterangan label="Keperluan" nilai={permintaan.keperluan} />
+            <BarisKeterangan
                 label="Tanggal dibutuhkan"
                 nilai={
                     permintaan.tanggal_dibutuhkan
@@ -325,7 +325,7 @@ function Keterangan({ permintaan }: { permintaan: BarisDetail }) {
                         : "Tidak ditentukan"
                 }
             />
-            <Baris
+            <BarisKeterangan
                 label="Diajukan"
                 nilai={
                     permintaan.diajukan_at
@@ -334,21 +334,11 @@ function Keterangan({ permintaan }: { permintaan: BarisDetail }) {
                 }
             />
             {permintaan.catatan_pemohon && (
-                <Baris label="Catatan" nilai={permintaan.catatan_pemohon} />
+                <BarisKeterangan
+                    label="Catatan"
+                    nilai={permintaan.catatan_pemohon}
+                />
             )}
         </dl>
-    );
-}
-
-function Baris({ label, nilai }: { label: string; nilai: string }) {
-    return (
-        <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
-            <dt className="shrink-0 text-xs text-muted-foreground sm:w-40 sm:text-[13px]">
-                {label}
-            </dt>
-            <dd className="text-[13px] leading-relaxed text-foreground">
-                {nilai}
-            </dd>
-        </div>
     );
 }
