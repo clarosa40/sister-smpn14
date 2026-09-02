@@ -1361,6 +1361,231 @@ await as(PGW2, async () => {
     );
 });
 
+// Bagian terakhir, seperti dua bagian sebelumnya: di sini permintaan
+// baru terbit lalu diputuskan tata usaha - keduanya hal yang dihitung
+// persis oleh pemeriksaan di bagian pengguna di atas.
+console.log("\n— persetujuan tata usaha —");
+
+/**
+ * Keranjang berisi satu barang, lalu diajukan - persis jalur yang
+ * ditempuh ajukanPermintaan: keperluan dan status ditulis dalam satu
+ * UPDATE. Itu sekaligus penjaga regresi untuk migrasi pembekuan, sebab
+ * UPDATE itulah yang paling mirip dengan yang dilarangnya.
+ */
+const ajukanBaru = async (keperluan, barangId) => {
+    await db.query(`insert into public.permintaan (keperluan) values ('')`);
+    const id = (
+        await db.query(
+            `select id from public.permintaan where keperluan = '' and status = 'draft'
+             order by created_at desc limit 1`,
+        )
+    ).rows[0].id;
+    await db.query(
+        `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+         values ($1, $2, 2)`,
+        [id, barangId],
+    );
+    await db.query(
+        `update public.permintaan set status = 'diajukan', keperluan = $1 where id = $2`,
+        [keperluan, id],
+    );
+    return id;
+};
+
+let permF, permG;
+await as(PGW, async () => {
+    permF = await ajukanBaru("Kain pel untuk ruang guru", pel);
+    permG = await ajukanBaru("Kain pel untuk lab IPA", pel);
+
+    const p = (
+        await db.query(
+            `select status, keperluan from public.permintaan where id = '${permF}'`,
+        )
+    ).rows[0];
+    ok(
+        "draft -> diajukan yang menulis keperluan sekalian tetap lolos",
+        p.status === "diajukan" && p.keperluan === "Kain pel untuk ruang guru",
+        JSON.stringify(p),
+    );
+});
+
+await as(TU, async () => {
+    await expectError(
+        "tata usaha tidak bisa menulis ulang keperluan permintaan yang sudah diajukan",
+        () =>
+            db.query(
+                `update public.permintaan set keperluan = 'Diubah tata usaha' where id = '${permF}'`,
+            ),
+        "tidak bisa diubah lagi",
+    );
+
+    await expectError(
+        "alasan penolakan tidak bisa ditulis pada baris yang statusnya diam",
+        () =>
+            db.query(
+                `update public.permintaan set alasan_tolak = 'Ditulis diam-diam' where id = '${permF}'`,
+            ),
+        "hanya bisa ditulis saat permintaan ditolak",
+    );
+
+    // Nama pemohon terjangkau tata usaha - inilah yang membuat garis
+    // waktu di halaman keputusan bisa menyebut orang, bukan cuma status.
+    const nama = (
+        await db.query(
+            `select pr.nama_lengkap from public.permintaan p
+             join public.profil pr on pr.id = p.pemohon_id where p.id = '${permG}'`,
+        )
+    ).rows;
+    ok(
+        "tata usaha ikut membaca nama pemohon permintaan orang lain",
+        nama.length === 1 && typeof nama[0].nama_lengkap === "string",
+        JSON.stringify(nama),
+    );
+
+    // Halaman keputusan menaruh angka ini di samping jumlah yang diminta.
+    const stok = (
+        await db.query(
+            `select barang_id, stok from public.stok_barang where barang_id = '${pel}'`,
+        )
+    ).rows;
+    ok(
+        "tata usaha membaca angka stok lewat stok_barang",
+        stok.length === 1 && Number(stok[0].stok) > 0,
+        JSON.stringify(stok),
+    );
+});
+
+await as(PGW, async () => {
+    await expectError(
+        "pemohon pun tidak bisa mengubah isi permintaannya setelah diajukan",
+        () =>
+            db.query(
+                `update public.permintaan set tanggal_dibutuhkan = current_date + 7
+                 where id = '${permF}'`,
+            ),
+        "tidak bisa diubah lagi",
+    );
+
+    // Draft tetap bebas disunting - di situlah keranjang sedang diisi.
+    await db.query(`insert into public.permintaan (keperluan) values ('')`);
+    const draft = (
+        await db.query(
+            `select id from public.permintaan where keperluan = '' and status = 'draft'
+             order by created_at desc limit 1`,
+        )
+    ).rows[0].id;
+    const u = await db.query(
+        `update public.permintaan set keperluan = 'Masih keranjang' where id = '${draft}'`,
+    );
+    ok("isi draft masih bebas diubah", u.affectedRows === 1, `(${u.affectedRows} baris)`);
+
+    await expectError(
+        "pemohon tidak bisa menyetujui permintaannya sendiri",
+        () =>
+            db.query(
+                `update public.permintaan set status = 'disetujui' where id = '${permF}'`,
+            ),
+        "hanya tata usaha",
+    );
+});
+
+await as(PGR, async () => {
+    await expectError(
+        "pengurus barang tidak bisa menyetujui permintaan",
+        () =>
+            db.query(
+                `update public.permintaan set status = 'disetujui' where id = '${permF}'`,
+            ),
+        "hanya tata usaha",
+    );
+});
+
+await as(TU, async () => {
+    await db.query(
+        `update public.permintaan set status = 'disetujui' where id = '${permF}'`,
+    );
+    const p = (
+        await db.query(
+            `select status, disetujui_at, disetujui_oleh from public.permintaan
+             where id = '${permF}'`,
+        )
+    ).rows[0];
+    ok(
+        "tata usaha menyetujui - stempel waktu dan namanya terisi sendiri",
+        p.status === "disetujui" &&
+            p.disetujui_at !== null &&
+            p.disetujui_oleh === TU,
+        JSON.stringify(p),
+    );
+
+    const log = (
+        await db.query(
+            `select oleh from public.permintaan_log
+             where permintaan_id = $1 and status_ke = 'disetujui'`,
+            [permF],
+        )
+    ).rows;
+    ok(
+        "persetujuan meninggalkan satu baris log atas nama tata usaha",
+        log.length === 1 && log[0].oleh === TU,
+        JSON.stringify(log),
+    );
+
+    await expectError(
+        "penolakan tanpa alasan ditolak constraint",
+        () =>
+            db.query(
+                `update public.permintaan set status = 'ditolak' where id = '${permG}'`,
+            ),
+        "alasan_tolak_wajib",
+    );
+
+    await db.query(
+        `update public.permintaan set status = 'ditolak', alasan_tolak = $1 where id = $2`,
+        ["Kain pel baru saja habis, tunggu penerimaan berikutnya", permG],
+    );
+    const g = (
+        await db.query(
+            `select status, alasan_tolak from public.permintaan where id = '${permG}'`,
+        )
+    ).rows[0];
+    ok(
+        "penolakan yang membawa alasannya sekalian diterima",
+        g.status === "ditolak" && /baru saja habis/.test(g.alasan_tolak),
+        JSON.stringify(g),
+    );
+
+    const logTolak = (
+        await db.query(
+            `select catatan from public.permintaan_log
+             where permintaan_id = $1 and status_ke = 'ditolak'`,
+            [permG],
+        )
+    ).rows[0];
+    ok(
+        "alasan penolakan ikut turun ke log",
+        /baru saja habis/.test(logTolak.catatan ?? ""),
+        JSON.stringify(logTolak),
+    );
+
+    // disetujui -> ditolak: stok yang tak kunjung datang masih bisa
+    // membatalkan persetujuan yang sudah terlanjur diberikan.
+    await db.query(
+        `update public.permintaan set status = 'ditolak', alasan_tolak = $1 where id = $2`,
+        ["Stok tak kunjung ada sampai akhir bulan", permF],
+    );
+    const f = (
+        await db.query(
+            `select status from public.permintaan where id = '${permF}'`,
+        )
+    ).rows[0];
+    ok(
+        "permintaan yang sudah disetujui masih bisa ditolak tata usaha",
+        f.status === "ditolak",
+        f.status,
+    );
+});
+
 console.log(`\n${pass} lolos, ${fail} gagal`);
 await db.close();
 process.exit(fail ? 1 : 0);
