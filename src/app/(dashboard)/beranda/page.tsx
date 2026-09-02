@@ -150,7 +150,11 @@ async function ringkasanTataUsaha() {
     if (galat) console.error("[beranda]", galat.code, galat.message);
 
     return {
-        angka: [menunggu.count ?? 0, disetujui.count ?? 0, pengguna.count ?? 0],
+        angka: [
+            menunggu.error ? null : (menunggu.count ?? 0),
+            disetujui.error ? null : (disetujui.count ?? 0),
+            pengguna.error ? null : (pengguna.count ?? 0),
+        ],
         aktivitas: (aktivitas.data ?? []) as unknown as Aktivitas[],
     };
 }

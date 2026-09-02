@@ -1428,6 +1428,29 @@ await as(TU, async () => {
         "hanya bisa ditulis saat permintaan ditolak",
     );
 
+    // Kolom sistem - bukan cuma isi yang diketik pemohon - ikut beku.
+    // nomor adalah nomor SPB yang tercetak di kertas fisik, dan
+    // disetujui_oleh dipakai pengguna/actions.ts untuk menggerbang
+    // penghapusan akun: keduanya diam-diam bisa ditulis ulang sebelum
+    // pembekuan ini diperlebar.
+    await expectError(
+        "tata usaha tidak bisa menulis ulang nomor SPB permintaan yang sudah diajukan",
+        () =>
+            db.query(
+                `update public.permintaan set nomor = 'SPB-999999' where id = '${permF}'`,
+            ),
+        "tidak bisa diubah lagi",
+    );
+
+    await expectError(
+        "tata usaha tidak bisa menulis ulang disetujui_oleh permintaan yang belum disetujui",
+        () =>
+            db.query(
+                `update public.permintaan set disetujui_oleh = '${TU}' where id = '${permF}'`,
+            ),
+        "tidak bisa diubah lagi",
+    );
+
     // Nama pemohon terjangkau tata usaha - inilah yang membuat garis
     // waktu di halaman keputusan bisa menyebut orang, bukan cuma status.
     const nama = (

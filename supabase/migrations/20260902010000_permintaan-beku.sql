@@ -84,7 +84,15 @@ begin
        or new.unit_kerja_id      is distinct from old.unit_kerja_id
        or new.keperluan          is distinct from old.keperluan
        or new.tanggal_dibutuhkan is distinct from old.tanggal_dibutuhkan
-       or new.catatan_pemohon    is distinct from old.catatan_pemohon then
+       or new.catatan_pemohon    is distinct from old.catatan_pemohon
+       or new.nomor              is distinct from old.nomor
+       or new.diajukan_at        is distinct from old.diajukan_at
+       or new.disetujui_at       is distinct from old.disetujui_at
+       or new.disetujui_oleh     is distinct from old.disetujui_oleh
+       or new.siap_at            is distinct from old.siap_at
+       or new.disiapkan_oleh     is distinct from old.disiapkan_oleh
+       or new.selesai_at         is distinct from old.selesai_at
+       or new.diserahkan_oleh    is distinct from old.diserahkan_oleh then
       raise exception 'Isi permintaan yang sudah diajukan tidak bisa diubah lagi.'
         using errcode = 'P0001';
     end if;
