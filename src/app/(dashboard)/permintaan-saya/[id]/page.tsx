@@ -29,8 +29,6 @@ export default async function DetailPermintaanPage({
     const { id } = await params;
     const supabase = await createClient();
 
-    // Kalau id-nya bukan uuid, Postgres menolaknya (22P02) dan data-nya
-    // null - jalur yang sama dengan permintaan yang memang tidak ada.
     const { data, error } = await supabase
         .from("permintaan")
         .select(
@@ -41,7 +39,12 @@ export default async function DetailPermintaanPage({
         .eq("id", id)
         .maybeSingle<BarisDetail>();
 
-    if (error) {
+    // Kalau id-nya bukan uuid, Postgres menolaknya (22P02) - jalur yang sama
+    // dengan permintaan yang memang tidak ada, sebab keduanya sama-sama
+    // bukan kesalahan pemuatan yang bisa hilang dengan memuat ulang.
+    // Galat lain (jaringan, Supabase down) memang bisa hilang dengan
+    // memuat ulang, jadi keduanya dibedakan di sini.
+    if (error && error.code !== "22P02") {
         console.error("[detail permintaan]", error.code, error.message);
         return (
             <p className="mx-auto max-w-3xl rounded-xl border border-destructive/25 bg-destructive/8 px-5 py-8 text-center text-[13px] text-destructive">
