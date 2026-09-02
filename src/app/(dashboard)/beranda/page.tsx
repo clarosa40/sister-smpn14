@@ -1,6 +1,7 @@
 import { getUserOrRedirect, type Role } from "@/lib/dal";
 import {
     kalimatLog,
+    tanggalHariIni,
     waktuSingkat,
     type StatusPermintaan,
 } from "@/lib/permintaan";
@@ -12,10 +13,10 @@ export const metadata: Metadata = {
     title: "Beranda — SIPB SMPN 14",
 };
 
-// Angka pegawai terisi di sub-proyek 4. Angka tata usaha menyusul bersama
-// halaman persetujuan di sub-proyek 5, angka pengurus barang bersama stok
-// dan penerimaan di sub-proyek 6. Label dan tata letaknya sudah terpasang
-// supaya kerangka ini yang tinggal diisi, bukan dirombak.
+// Angka pegawai terisi di sub-proyek 4, angka tata usaha di sub-proyek 5.
+// Angka pengurus barang menyusul bersama stok dan penerimaan di
+// sub-proyek 6. Label dan tata letaknya sudah terpasang sejak awal supaya
+// kerangka ini yang tinggal diisi, bukan dirombak.
 const RINGKASAN: Record<Role, string[]> = {
     pegawai: ["Permintaan Aktif", "Menunggu Persetujuan", "Siap Diambil"],
     tata_usaha: [
@@ -39,6 +40,16 @@ const AKTIF: StatusPermintaan[] = [
 ];
 
 const WAKTU_JAKARTA = "Asia/Jakarta";
+
+/**
+ * Kalimat kedua di bawah "Belum ada aktivitas", satu per peran yang
+ * angkanya sudah terisi. Peran yang belum - dan karena itu tidak punya
+ * ringkasan sama sekali - memakai kalimat "modulnya aktif" di bawah.
+ */
+const KOSONG_AKTIVITAS: Partial<Record<Role, string>> = {
+    pegawai: "Riwayat permintaan Anda muncul di sini begitu keranjang pertama dibuat.",
+    tata_usaha: "Riwayat permintaan sekolah muncul di sini begitu ada yang diajukan.",
+};
 
 type Aktivitas = {
     id: string;
@@ -97,13 +108,64 @@ async function ringkasanPegawai(userId: string) {
     };
 }
 
+/**
+ * Tiga angka tata usaha, tiga count(head: true) yang berjalan bersamaan.
+ *
+ * Berbeda dengan ringkasanPegawai di atas, ketiganya tidak bisa dilipat
+ * jadi satu select: yang pertama menghitung status, yang kedua sebuah
+ * batas tanggal, dan yang ketiga tabel lain sama sekali. Promise.all yang
+ * menjaga maksud komentar di sana - satu kali menunggu, bukan tiga.
+ *
+ * Log tidak perlu disaring: policy baca_permintaan_log membuka seluruh
+ * log kepada is_staf(), dan itu memang yang diinginkan di sini - ticker
+ * ini tentang seluruh sekolah, bukan tentang satu orang.
+ */
+async function ringkasanTataUsaha() {
+    const supabase = await createClient();
+
+    // "2026-09" + "-01T00:00:00+07:00". Batas bulannya disusun dari tanggal
+    // Jakarta, bukan dari getMonth(): zona waktu server bukan zona waktu
+    // sekolah, dan itu pula sebabnya tanggalHariIni() ada.
+    const awalBulan = `${tanggalHariIni().slice(0, 7)}-01T00:00:00+07:00`;
+
+    const [menunggu, disetujui, pengguna, aktivitas] = await Promise.all([
+        supabase
+            .from("permintaan")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "diajukan"),
+        supabase
+            .from("permintaan")
+            .select("id", { count: "exact", head: true })
+            .gte("disetujui_at", awalBulan),
+        supabase.from("profil").select("id", { count: "exact", head: true }),
+        supabase
+            .from("permintaan_log")
+            .select("id, status_ke, created_at, permintaan ( nomor )")
+            .order("created_at", { ascending: false })
+            .limit(5),
+    ]);
+
+    const galat =
+        menunggu.error ?? disetujui.error ?? pengguna.error ?? aktivitas.error;
+    if (galat) console.error("[beranda]", galat.code, galat.message);
+
+    return {
+        angka: [menunggu.count ?? 0, disetujui.count ?? 0, pengguna.count ?? 0],
+        aktivitas: (aktivitas.data ?? []) as unknown as Aktivitas[],
+    };
+}
+
 export default async function BerandaPage() {
     // Sudah dibungkus cache(), jadi pemanggilan kedua dalam render pass yang
     // sama ini tidak menambah perjalanan ke Supabase.
     const user = await getUserOrRedirect();
 
     const ringkasan =
-        user.role === "pegawai" ? await ringkasanPegawai(user.id) : null;
+        user.role === "pegawai"
+            ? await ringkasanPegawai(user.id)
+            : user.role === "tata_usaha"
+              ? await ringkasanTataUsaha()
+              : null;
 
     const sekarang = new Date();
     const jam = Number(
@@ -179,8 +241,7 @@ export default async function BerandaPage() {
                     <p className="px-5 py-8 text-center text-[13px] leading-relaxed text-muted-foreground">
                         Belum ada aktivitas.
                         <br />
-                        Riwayat permintaan Anda muncul di sini begitu keranjang
-                        pertama dibuat.
+                        {KOSONG_AKTIVITAS[user.role]}
                     </p>
                 ) : (
                     <ul className="divide-y divide-border">
