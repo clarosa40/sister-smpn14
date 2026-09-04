@@ -7,7 +7,6 @@ import {
 } from "@/components/auth/form-parts";
 import { FormAlert, SubmitButton } from "@/components/form-parts";
 import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
@@ -73,15 +72,6 @@ export function LoginForm({ nonaktif = false }: { nonaktif?: boolean }) {
                     required
                 />
             </AuthField>
-
-            <div className="flex justify-end">
-                <Link
-                    href="/login/lupa-sandi"
-                    className="text-xs text-primary underline-offset-4 hover:underline"
-                >
-                    Lupa kata sandi?
-                </Link>
-            </div>
 
             <SubmitButton pending={pending} pendingLabel="Memproses">
                 Masuk

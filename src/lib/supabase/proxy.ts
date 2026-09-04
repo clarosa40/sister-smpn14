@@ -3,12 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
 // Tidak mengharapkan sesi. Pengunjung yang sudah masuk dipulangkan ke beranda.
-const TANPA_SESI = ["/login", "/login/lupa-sandi"];
-
-// Mengharapkan sesi, tetapi bukan sesi biasa: ini jalur pemulihan kata sandi.
-// Dibiarkan lewat ke dua arah, sebab pemakainya berpindah dari tanpa-sesi ke
-// bersesi di tengah jalur, dan aturan mana pun akan memutusnya di salah satu sisi.
-const PEMULIHAN = ["/auth/konfirmasi", "/login/reset-sandi"];
+const TANPA_SESI = ["/login"];
 
 export const supabaseProxy = async (request: NextRequest) => {
     let supabaseResponse = NextResponse.next({
@@ -49,10 +44,6 @@ export const supabaseProxy = async (request: NextRequest) => {
 
     const { pathname } = request.nextUrl;
 
-    if (PEMULIHAN.includes(pathname)) {
-        return supabaseResponse;
-    }
-
     // Supabase memutar refresh token setiap kali dipakai, jadi cookie hasil
     // penyegaran di atas harus ikut pada setiap pengalihan. NextResponse.redirect
     // yang polos membuangnya: penyegaran terjadi di server tetapi peramban tidak
@@ -62,8 +53,8 @@ export const supabaseProxy = async (request: NextRequest) => {
         url.pathname = tujuan;
         // clone() ikut membawa query string, dan parameter itu ditujukan untuk
         // halaman asal - bukan untuk tujuannya. Tanpa baris ini, sebuah
-        // pengalihan dari /login/lupa-sandi?galat=tautan mendarat sebagai
-        // /beranda?galat=tautan.
+        // pengalihan dari /login?alasan=nonaktif mendarat sebagai
+        // /beranda?alasan=nonaktif.
         url.search = "";
         const response = NextResponse.redirect(url);
         supabaseResponse.cookies

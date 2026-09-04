@@ -5,8 +5,8 @@ import type { AuthError, PostgrestError } from "@supabase/supabase-js";
 
 /**
  * Bentuk kembalian setiap server action master data, sebangun dengan
- * HasilReset di (auth)/login/reset-sandi/actions.ts supaya useActionState
- * dipakai dengan cara yang sama di seluruh aplikasi.
+ * HasilGanti di (auth)/ganti-sandi/actions.ts supaya useActionState dipakai
+ * dengan cara yang sama di seluruh aplikasi.
  */
 export type HasilAksi = { ok: true } | { ok: false; galat: string };
 
