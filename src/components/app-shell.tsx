@@ -54,8 +54,11 @@ export function AppShell({
 
     return (
         <div className="flex min-h-svh bg-background">
-            {/* Sidebar layar lebar */}
-            <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+            {/* Sidebar layar lebar. Tinggi dikunci setinggi layar dan
+                dilekatkan, supaya petak pengguna di kakinya tetap terlihat
+                pada halaman panjang - tanpa itu sidebar ikut memanjang
+                sepanjang dokumen dan petaknya turun jauh ke bawah. */}
+            <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
                 <IsiSidebar user={user} />
             </aside>
 
@@ -139,7 +142,11 @@ function IsiSidebar({ user, onTutup }: { user: User; onTutup?: () => void }) {
                 className="mx-4 mb-3 h-px bg-sidebar-border"
             />
 
-            <SidebarNav role={user.role} onNavigate={onTutup} />
+            <SidebarNav
+                role={user.role}
+                onNavigate={onTutup}
+                className="min-h-0 overflow-y-auto"
+            />
 
             <PetakPengguna user={user} />
         </>
