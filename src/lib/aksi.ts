@@ -51,6 +51,18 @@ export const pastikanTataUsaha = async (): Promise<User> =>
 export const pastikanPegawai = async (): Promise<User> =>
     getUserOrRedirect(["pegawai"]);
 
+/**
+ * Pasangan pastikanTataUsaha dan pastikanPegawai untuk halaman pengurus
+ * barang. Sama seperti keduanya, ini lapis kedua, bukan gerbangnya:
+ * gerbang sesungguhnya adalah policy kelola_penerimaan,
+ * kelola_penerimaan_item, dan ketiga fungsi SECURITY DEFINER
+ * (siapkan_permintaan, catat_penerimaan, catat_penyesuaian), yang tetap
+ * berlaku kalau pemeriksaan ini kelak terlupa dipasang di sebuah aksi
+ * baru.
+ */
+export const pastikanPengurus = async (): Promise<User> =>
+    getUserOrRedirect(["pengurus_barang"]);
+
 /** Isi satu kolom formulir, sudah dirapikan ujung-ujungnya. */
 export const teks = (formData: FormData, nama: string): string =>
     String(formData.get(nama) ?? "").trim();

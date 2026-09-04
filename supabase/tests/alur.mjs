@@ -177,6 +177,108 @@ await as(PGR, async () => {
     );
 });
 
+console.log("\n— penerimaan tercatat beku —");
+await as(PGR, async () => {
+    await expectError(
+        "kepala penerimaan yang sudah tercatat tidak bisa diubah",
+        () =>
+            db.exec(
+                `update public.penerimaan set catatan = 'diubah diam-diam' where id = '${penerimaanId}'`,
+            ),
+        "sudah tercatat",
+    );
+
+    await expectError(
+        "kepala penerimaan yang sudah tercatat tidak bisa dihapus",
+        () => db.exec(`delete from public.penerimaan where id = '${penerimaanId}'`),
+        "sudah tercatat",
+    );
+
+    const baris = (
+        await db.query(
+            `select id from public.penerimaan_item where penerimaan_id = '${penerimaanId}' and barang_id = '${spidol}'`,
+        )
+    ).rows[0];
+
+    await expectError(
+        "baris penerimaan yang sudah tercatat tidak bisa diubah",
+        () =>
+            db.exec(
+                `update public.penerimaan_item set jumlah = 999 where id = '${baris.id}'`,
+            ),
+        "sudah tercatat",
+    );
+
+    await expectError(
+        "baris penerimaan yang sudah tercatat tidak bisa dihapus",
+        () => db.exec(`delete from public.penerimaan_item where id = '${baris.id}'`),
+        "sudah tercatat",
+    );
+
+    // Pembekuan terikat pada terbitnya mutasi, bukan pada keberadaan
+    // dokumennya - dokumen yang belum diposting lewat catat_penerimaan()
+    // masih bebas disunting dan dihapus lagi, lalu dibersihkan supaya
+    // tidak ikut terhitung bagian-bagian berikutnya.
+    await db.exec(`
+    insert into public.penerimaan (no_dokumen) values ('INV-BELUM-POSTING');
+    insert into public.penerimaan_item (penerimaan_id, barang_id, jumlah)
+    select p.id, '${pulpen}', 7 from public.penerimaan p where p.no_dokumen = 'INV-BELUM-POSTING';`);
+
+    const belum = (
+        await db.query(
+            `select pi.id from public.penerimaan_item pi
+             join public.penerimaan p on p.id = pi.penerimaan_id
+             where p.no_dokumen = 'INV-BELUM-POSTING'`,
+        )
+    ).rows[0];
+
+    const u = await db.query(
+        `update public.penerimaan_item set jumlah = 9 where id = $1`,
+        [belum.id],
+    );
+    ok(
+        "baris penerimaan tanpa mutasi masih bisa diubah",
+        u.affectedRows === 1,
+        `(${u.affectedRows} baris)`,
+    );
+
+    const uh = await db.query(
+        `update public.penerimaan set catatan = 'masih boleh' where no_dokumen = 'INV-BELUM-POSTING'`,
+    );
+    ok(
+        "kepala penerimaan tanpa mutasi masih bisa diubah",
+        uh.affectedRows === 1,
+        `(${uh.affectedRows} baris)`,
+    );
+
+    await db.query(
+        `delete from public.penerimaan_item where id = $1`,
+        [belum.id],
+    );
+    const dh = await db.query(
+        `delete from public.penerimaan where no_dokumen = 'INV-BELUM-POSTING'`,
+    );
+    ok(
+        "kepala penerimaan tanpa mutasi masih bisa dihapus",
+        dh.affectedRows === 1,
+        `(${dh.affectedRows} baris)`,
+    );
+
+    // Policy tulis_mutasi sudah dicabut, dan INSERT yang ditolak RLS
+    // muncul sebagai galat (tidak seperti UPDATE/DELETE yang menyaring
+    // diam-diam) - satu-satunya pintu yang tersisa sekarang adalah
+    // ketiga fungsi SECURITY DEFINER.
+    await expectError(
+        "pengurus barang tidak lagi bisa menulis mutasi langsung lewat API",
+        () =>
+            db.query(
+                `insert into public.mutasi_stok (barang_id, jenis, jumlah, catatan)
+                 values ('${spidol}', 'penyesuaian', 3, 'jalan pintas lewat API')`,
+            ),
+        "row-level security",
+    );
+});
+
 console.log("\n— apa yang dilihat tiap peran —");
 await as(TU, async () => {
     const s = (

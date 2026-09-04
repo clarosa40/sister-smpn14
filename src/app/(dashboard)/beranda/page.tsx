@@ -8,15 +8,15 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
     title: "Beranda — SIPB SMPN 14",
 };
 
-// Angka pegawai terisi di sub-proyek 4, angka tata usaha di sub-proyek 5.
-// Angka pengurus barang menyusul bersama stok dan penerimaan di
-// sub-proyek 6. Label dan tata letaknya sudah terpasang sejak awal supaya
-// kerangka ini yang tinggal diisi, bukan dirombak.
+// Label dan tata letaknya terpasang sejak awal untuk ketiga peran; setiap
+// sub-proyek tinggal mengisi ringkasan perannya sendiri, bukan merombak
+// kerangkanya.
 const RINGKASAN: Record<Role, string[]> = {
     pegawai: ["Permintaan Aktif", "Menunggu Persetujuan", "Siap Diambil"],
     tata_usaha: [
@@ -49,6 +49,8 @@ const WAKTU_JAKARTA = "Asia/Jakarta";
 const KOSONG_AKTIVITAS: Partial<Record<Role, string>> = {
     pegawai: "Riwayat permintaan Anda muncul di sini begitu keranjang pertama dibuat.",
     tata_usaha: "Riwayat permintaan sekolah muncul di sini begitu ada yang diajukan.",
+    pengurus_barang:
+        "Riwayat permintaan sekolah muncul di sini begitu tata usaha menyetujui yang pertama.",
 };
 
 type Aktivitas = {
@@ -159,6 +161,60 @@ async function ringkasanTataUsaha() {
     };
 }
 
+/**
+ * Barang Kosong dan Siap Disiapkan sama-sama count(head: true) atas
+ * tabel yang sudah difilter tepat seperti antrean sungguhannya - angka
+ * di beranda karena itu selalu sama dengan panjang /stok?kosong=1 dan
+ * antrean Siapkan di /permintaan-masuk. Penerimaan Bulan Ini dibatasi
+ * lewat tanggalHariIni(), bukan getMonth(): kolom penerimaan.tanggal
+ * adalah tanggal Jakarta yang diketik operator, dan zona waktu server
+ * bukan zona waktu sekolah.
+ */
+async function ringkasanPengurus() {
+    const supabase = await createClient();
+
+    const bulanIni = tanggalHariIni().slice(0, 7); // "2026-09"
+    const awalBulan = `${bulanIni}-01`;
+    const [tahun, bulan] = bulanIni.split("-").map(Number);
+    const awalBulanBerikut =
+        bulan === 12
+            ? `${tahun + 1}-01-01`
+            : `${tahun}-${String(bulan + 1).padStart(2, "0")}-01`;
+
+    const [kosong, siap, penerimaan, aktivitas] = await Promise.all([
+        supabase
+            .from("stok_barang")
+            .select("barang_id", { count: "exact", head: true })
+            .eq("status", "kosong"),
+        supabase
+            .from("permintaan")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "disetujui"),
+        supabase
+            .from("penerimaan")
+            .select("id", { count: "exact", head: true })
+            .gte("tanggal", awalBulan)
+            .lt("tanggal", awalBulanBerikut),
+        supabase
+            .from("permintaan_log")
+            .select("id, status_ke, created_at, permintaan ( nomor )")
+            .order("created_at", { ascending: false })
+            .limit(5),
+    ]);
+
+    const galat = kosong.error ?? siap.error ?? penerimaan.error ?? aktivitas.error;
+    if (galat) console.error("[beranda]", galat.code, galat.message);
+
+    return {
+        angka: [
+            kosong.error ? null : (kosong.count ?? 0),
+            siap.error ? null : (siap.count ?? 0),
+            penerimaan.error ? null : (penerimaan.count ?? 0),
+        ],
+        aktivitas: (aktivitas.data ?? []) as unknown as Aktivitas[],
+    };
+}
+
 export default async function BerandaPage() {
     // Sudah dibungkus cache(), jadi pemanggilan kedua dalam render pass yang
     // sama ini tidak menambah perjalanan ke Supabase.
@@ -169,7 +225,7 @@ export default async function BerandaPage() {
             ? await ringkasanPegawai(user.id)
             : user.role === "tata_usaha"
               ? await ringkasanTataUsaha()
-              : null;
+              : await ringkasanPengurus();
 
     const sekarang = new Date();
     const jam = Number(
@@ -203,13 +259,20 @@ export default async function BerandaPage() {
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
                 {RINGKASAN[user.role].map((label, i) => {
                     const nilai = ringkasan?.angka[i] ?? null;
+                    // Barang Kosong adalah titik awal, bukan sekadar trivia:
+                    // baris pertama tiap peran menautkannya kalau ada tujuan
+                    // yang jelas - satu-satunya sejauh ini adalah tile ini,
+                    // milik pengurus barang.
+                    const href =
+                        user.role === "pengurus_barang" && i === 0
+                            ? "/stok?kosong=1"
+                            : null;
+
                     return (
-                        <div
+                        <Kartu
                             key={label}
-                            className={cn(
-                                "rounded-xl border border-border bg-card p-4 md:p-5",
-                                i === 0 && "col-span-2 md:col-span-1",
-                            )}
+                            href={href}
+                            className={cn(i === 0 && "col-span-2 md:col-span-1")}
                         >
                             <p className="text-[11px] font-medium text-muted-foreground md:text-xs">
                                 {label}
@@ -224,7 +287,7 @@ export default async function BerandaPage() {
                             >
                                 {nilai === null ? <>&mdash;</> : nilai}
                             </p>
-                        </div>
+                        </Kartu>
                     );
                 })}
             </div>
@@ -234,14 +297,7 @@ export default async function BerandaPage() {
                     Aktivitas Terbaru
                 </h3>
 
-                {ringkasan === null ? (
-                    <p className="px-5 py-8 text-center text-[13px] leading-relaxed text-muted-foreground">
-                        Belum ada aktivitas.
-                        <br />
-                        Riwayat permintaan dan penerimaan muncul di sini begitu
-                        modulnya aktif.
-                    </p>
-                ) : ringkasan.aktivitas.length === 0 ? (
+                {ringkasan.aktivitas.length === 0 ? (
                     <p className="px-5 py-8 text-center text-[13px] leading-relaxed text-muted-foreground">
                         Belum ada aktivitas.
                         <br />
@@ -272,4 +328,33 @@ export default async function BerandaPage() {
             </section>
         </div>
     );
+}
+
+/** Tuile ringkasan, tautan kalau diberi href dan <div> mati kalau tidak. */
+function Kartu({
+    href,
+    className,
+    children,
+}: {
+    href: string | null;
+    className?: string;
+    children: React.ReactNode;
+}) {
+    const kelas = cn("rounded-xl border border-border bg-card p-4 md:p-5", className);
+
+    if (href) {
+        return (
+            <Link
+                href={href}
+                className={cn(
+                    kelas,
+                    "block transition-colors outline-none hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50",
+                )}
+            >
+                {children}
+            </Link>
+        );
+    }
+
+    return <div className={kelas}>{children}</div>;
 }
