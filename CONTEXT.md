@@ -38,6 +38,16 @@ The application's record of a person: name, unit kerja, role, active flag.
 Passwords and sessions belong to Supabase Auth, never to profil.
 _Avoid_: user, akun (for the row itself)
 
+**Sandi Sementara**:
+The password tata usaha hands over when they create an account or when someone
+has locked themselves out. Always generated, never composed — shown on screen
+once, read aloud, and never retrievable afterwards. It leaves a marker on the
+account that holds its owner at /ganti-sandi until they choose a password of
+their own, and only the marker's absence means they have. The single way a
+password is set without knowing the old one: there is no recovery email, and a
+forgotten password is an errand to tata usaha.
+_Avoid_: sandi awal, password default, reset password (for the act)
+
 ### Goods and stock
 
 **Barang**:
