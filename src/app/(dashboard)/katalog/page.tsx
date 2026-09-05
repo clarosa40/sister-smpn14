@@ -30,7 +30,8 @@ export default async function KatalogPage({
     // kalau select-nya kelak ditulis dengan "*".
     let kueri = supabase
         .from("katalog_pemohon")
-        .select("barang_id, kode, nama, satuan, tersedia");
+        .select("barang_id, kode, nama, satuan, tersedia")
+        .order("tersedia", { ascending: false });
 
     const kataKunci = siapkanKataKunci(cari);
     if (kataKunci) {

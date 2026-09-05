@@ -9,6 +9,7 @@ import { Minus, Plus, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { setelJumlah, tambahKeKeranjang } from "./actions";
+import { cn } from "@/lib/utils";
 
 export type BarisKatalog = {
     barang_id: string;
@@ -92,7 +93,10 @@ export function KatalogDaftar({
                     {baris.map((barang) => (
                         <li
                             key={barang.barang_id}
-                            className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+                            className={cn(
+                                "flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3",
+                                barang.tersedia ? "bg-card" : "bg-muted",
+                            )}
                         >
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium text-foreground">
