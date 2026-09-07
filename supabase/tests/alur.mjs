@@ -7,6 +7,27 @@ const TU = "11111111-1111-1111-1111-111111111111"; // tata usaha
 const PGR = "22222222-2222-2222-2222-222222222222"; // pengurus barang
 const PGW = "33333333-3333-3333-3333-333333333333"; // pegawai
 
+const semuaMigrasi = readdirSync(MIG)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+
+// auth.uid() dan tabelnya sendiri bukan bagian dari migrasi - keduanya
+// milik Supabase, bukan skema proyek ini - jadi setiap instance PGlite
+// baru harus menanamnya sendiri sebelum migrasi bisa direplay di atasnya.
+const buatSkemaAuth = (target) =>
+    target.exec(`
+create schema if not exists auth;
+create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb, raw_app_meta_data jsonb);
+create or replace function auth.uid() returns uuid language sql stable as $fn$
+  select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $fn$;
+create role anon; create role authenticated; create role service_role;`);
+
+const jalankanMigrasi = async (target, daftarFile) => {
+    for (const f of daftarFile) {
+        await target.exec(readFileSync(new URL(f, MIG), "utf8"));
+    }
+};
+
 // Barang dicari lewat nama, bukan kode. Kode barang berasal dari
 // Excel inventaris sekolah dan akan diganti seluruhnya saat data
 // sungguhan masuk; tes tidak boleh ikut mati karenanya.
@@ -66,18 +87,8 @@ async function as(uid, fn) {
 }
 
 // ---- setup -------------------------------------------------------
-await db.exec(`
-create schema if not exists auth;
-create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb, raw_app_meta_data jsonb);
-create or replace function auth.uid() returns uuid language sql stable as $fn$
-  select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $fn$;
-create role anon; create role authenticated; create role service_role;`);
-
-for (const f of readdirSync(MIG)
-    .filter((f) => f.endsWith(".sql"))
-    .sort()) {
-    await db.exec(readFileSync(new URL(f, MIG), "utf8"));
-}
+await buatSkemaAuth(db);
+await jalankanMigrasi(db, semuaMigrasi);
 
 await db.exec(`
 insert into auth.users (id, email) values
@@ -385,7 +396,7 @@ await as(PGW, async () => {
       ('${permB}', '${hvs}', 2);`);
 
     await db.exec(
-        `update public.permintaan set status = 'diajukan' where id in ('${permA}', '${permB}')`,
+        `update public.permintaan set status = 'diajukan', tanggal = current_date where id in ('${permA}', '${permB}')`,
     );
     const q = (
         await db.query(
@@ -652,7 +663,7 @@ await as(PGW, async () => {
 
     await db.exec(`
     insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta) values ('${permC}', '${spidol}', 1);
-    update public.permintaan set status = 'diajukan' where id = '${permC}';
+    update public.permintaan set status = 'diajukan', tanggal = current_date where id = '${permC}';
     update public.permintaan set status = 'dibatalkan' where id = '${permC}';`);
     const p = (
         await db.query(
@@ -1291,7 +1302,7 @@ await as(PGW, async () => {
     );
 
     await db.query(
-        `update public.permintaan set status = 'diajukan',
+        `update public.permintaan set status = 'diajukan', tanggal = current_date,
          keperluan = 'Spidol untuk ulangan harian' where id = '${keranjang.id}'`,
     );
     const p = (
@@ -1388,7 +1399,7 @@ await as(PGW, async () => {
          values ('${permE}', '${pel}', 2)`,
     );
     await db.query(
-        `update public.permintaan set status = 'diajukan',
+        `update public.permintaan set status = 'diajukan', tanggal = current_date,
          keperluan = 'Kain pel untuk piket kelas' where id = '${permE}'`,
     );
 });
@@ -1496,7 +1507,7 @@ const ajukanBaru = async (keperluan, barangId) => {
         [id, barangId],
     );
     await db.query(
-        `update public.permintaan set status = 'diajukan', keperluan = $1 where id = $2`,
+        `update public.permintaan set status = 'diajukan', tanggal = current_date, keperluan = $1 where id = $2`,
         [keperluan, id],
     );
     return id;
@@ -1718,6 +1729,150 @@ await as(TU, async () => {
         f.status,
     );
 });
+
+console.log("\n— aturan kolom tanggal permintaan —");
+await as(PGW, async () => {
+    const draftBaru = async () => {
+        await db.query(`insert into public.permintaan (keperluan) values ('')`);
+        const id = (
+            await db.query(
+                `select id from public.permintaan where keperluan = '' and status = 'draft'
+                 order by created_at desc limit 1`,
+            )
+        ).rows[0].id;
+        await db.query(
+            `insert into public.permintaan_item (permintaan_id, barang_id, jumlah_diminta)
+             values ($1, $2, 1)`,
+            [id, pel],
+        );
+        return id;
+    };
+
+    const permH = await draftBaru();
+    await expectError(
+        "permintaan tidak bisa diajukan dengan tanggal permintaan di masa depan",
+        () =>
+            db.query(
+                `update public.permintaan set status = 'diajukan', keperluan = 'Coba tanggal masa depan',
+                 tanggal = current_date + 5 where id = $1`,
+                [permH],
+            ),
+        "tanggal_tidak_di_masa_depan",
+    );
+
+    const permI = await draftBaru();
+    await expectError(
+        "permintaan tidak bisa keluar dari draft dengan tanggal permintaan kosong",
+        () =>
+            db.query(
+                `update public.permintaan set status = 'diajukan', keperluan = 'Coba tanpa tanggal'
+                 where id = $1`,
+                [permI],
+            ),
+        "tanggal_ada_setelah_draft",
+    );
+
+    // Batas tiga puluh hari ke belakang bukan urusan database - lihat
+    // issue 02. Di sini yang diuji justru sebaliknya: database
+    // sengaja tidak menolaknya.
+    const permJ = await draftBaru();
+    const j = await db.query(
+        `update public.permintaan set status = 'diajukan', keperluan = 'Permintaan susulan',
+         tanggal = current_date - 400 where id = $1`,
+        [permJ],
+    );
+    ok(
+        "database menerima tanggal permintaan lebih dari tiga puluh hari ke belakang",
+        j.affectedRows === 1,
+        `(${j.affectedRows} baris)`,
+    );
+
+    await expectError(
+        "tanggal permintaan tidak bisa diubah lagi begitu keluar dari draft",
+        () =>
+            db.query(`update public.permintaan set tanggal = current_date where id = $1`, [
+                permJ,
+            ]),
+        "tidak bisa diubah lagi",
+    );
+
+    const permK = await draftBaru();
+    const k = await db.query(
+        `update public.permintaan set tanggal = current_date - 2 where id = $1`,
+        [permK],
+    );
+    ok(
+        "draft masih bebas mengubah tanggal permintaan",
+        k.affectedRows === 1,
+        `(${k.affectedRows} baris)`,
+    );
+});
+
+console.log("\n— migrasi tanggal permintaan: backfill baris lama —");
+{
+    // Instance PGlite terpisah: mengulang migrasi hanya sampai sebelum
+    // migrasi tanggal, menanam satu baris seolah-olah sudah lama hidup
+    // di produksi, baru menjalankan migrasi tanggal dan yang sesudahnya.
+    // Trigger dimatikan sesaat untuk menulis diajukan_at yang
+    // dimundurkan - pembekuan kolom sistem sudah berlaku di migrasi
+    // sebelumnya dan akan menolak UPDATE menulisinya belakangan.
+    const MIGRASI_TANGGAL = "20260907020000_permintaan-tanggal.sql";
+    const sebelum = semuaMigrasi.filter((f) => f < MIGRASI_TANGGAL);
+    const mulaiDariTanggal = semuaMigrasi.filter((f) => f >= MIGRASI_TANGGAL);
+
+    const dbLama = new PGlite();
+    await buatSkemaAuth(dbLama);
+    await jalankanMigrasi(dbLama, sebelum);
+
+    await dbLama.exec(`
+    insert into auth.users (id, email) values ('${PGW}', 'guru.ipa@${DOMAIN_SEKOLAH}');
+    update public.profil set unit_kerja_id = (select id from public.unit_kerja where nama = 'Guru')
+      where id = '${PGW}';
+
+    alter table public.permintaan disable trigger trg_permintaan_alur;
+
+    insert into public.permintaan (pemohon_id, unit_kerja_id, status, keperluan, nomor, diajukan_at)
+      values ('${PGW}', (select id from public.unit_kerja where nama = 'Guru'), 'diajukan',
+              'Baris lama sebelum migrasi tanggal', 'SPB-000999', timestamptz '2026-06-01 23:30:00+00');
+
+    insert into public.permintaan (pemohon_id, unit_kerja_id, status, keperluan)
+      values ('${PGW}', (select id from public.unit_kerja where nama = 'Guru'), 'draft',
+              'Keranjang lama, belum diajukan');
+
+    alter table public.permintaan enable trigger trg_permintaan_alur;`);
+
+    await jalankanMigrasi(dbLama, mulaiDariTanggal);
+
+    const baris = petaNama(
+        (
+            await dbLama.query(
+                `select keperluan as nama,
+                        tanggal::text as tanggal,
+                        tanggal = (diajukan_at at time zone 'Asia/Jakarta')::date as cocok
+                 from public.permintaan`,
+            )
+        ).rows,
+    );
+
+    // diajukan_at 2026-06-01 23:30 UTC jatuh di 2026-06-02 06:30 WIB -
+    // baris lewat tengah malam UTC inilah yang membuktikan backfill
+    // sungguh memakai waktu Jakarta, bukan tanggal UTC mentah.
+    const lama = baris["Baris lama sebelum migrasi tanggal"];
+    ok(
+        "backfill mengisi tanggal baris lama dari diajukan_at, dikonversi ke Asia/Jakarta",
+        lama.cocok === true && lama.tanggal === "2026-06-02",
+        JSON.stringify(lama),
+    );
+
+    const draftLama = baris["Keranjang lama, belum diajukan"];
+    ok(
+        "backfill tidak menyentuh keranjang lama yang masih draft",
+        draftLama.tanggal === null,
+        JSON.stringify(draftLama),
+    );
+
+    await dbLama.close();
+}
 
 console.log(`\n${pass} lolos, ${fail} gagal`);
 await db.close();

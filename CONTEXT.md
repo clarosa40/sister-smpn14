@@ -126,6 +126,18 @@ _Avoid_: baris permintaan, line item, detail
 The reason the requester gives for needing the supplies.
 _Avoid_: alasan, tujuan, purpose
 
+**Tanggal Permintaan**:
+The day a pegawai actually asked for the supplies. Theirs to state, and it may
+fall before the day they typed the request in — riwayat and consumption reports
+count by this date, not by the day the row appeared.
+_Avoid_: tanggal pengajuan, tanggal input, backdate
+
+**Tanggal Diajukan**:
+The day the permintaan reached SIPB, stamped by the system and chosen by no
+one. It is what the antrean is ordered by, and the one date on a permintaan
+that a person cannot write.
+_Avoid_: tanggal masuk, tanggal dicatat, created date
+
 **Dilayani utuh**:
 The fulfilment rule: a permintaan is prepared in full or not at all. One short
 barang aborts the whole preparation and no mutasi is written. There is no
