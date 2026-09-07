@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { HasilAksi } from "@/lib/aksi";
+import { DOMAIN_SEKOLAH } from "@/lib/alamat";
 import * as React from "react";
 
 export type AksiDialog = (
@@ -164,6 +165,50 @@ export function BidangDialog({
                 onChange={(e) => setNilai(e.target.value)}
                 {...props}
             />
+            {petunjuk && (
+                <p className="text-xs text-muted-foreground">{petunjuk}</p>
+            )}
+        </div>
+    );
+}
+
+/**
+ * BidangDialog dengan domain sekolah tampil di sampingnya sebagai teks tetap
+ * yang tidak bisa dipilih - dialog punya sizing sendiri (38px), tidak
+ * berbagi komponen dengan AuthInputBerdomain di layar auth.
+ */
+export function BidangDialogBerdomain({
+    id,
+    label,
+    petunjuk,
+    defaultValue = "",
+    ...props
+}: Omit<React.ComponentProps<typeof Input>, "defaultValue" | "value"> & {
+    id: string;
+    label: string;
+    petunjuk?: string;
+    defaultValue?: string;
+}) {
+    const [nilai, setNilai] = React.useState(defaultValue);
+
+    return (
+        <div className="flex flex-col gap-1.5">
+            <Label htmlFor={id} className="text-[13px]">
+                {label}
+            </Label>
+            <div className="flex items-center gap-2">
+                <Input
+                    id={id}
+                    name={id}
+                    className="h-9.5 min-w-0 flex-1"
+                    value={nilai}
+                    onChange={(e) => setNilai(e.target.value)}
+                    {...props}
+                />
+                <span className="shrink-0 text-sm text-muted-foreground select-none">
+                    @{DOMAIN_SEKOLAH}
+                </span>
+            </div>
             {petunjuk && (
                 <p className="text-xs text-muted-foreground">{petunjuk}</p>
             )}

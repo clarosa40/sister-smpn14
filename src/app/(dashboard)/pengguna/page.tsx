@@ -32,13 +32,13 @@ export default async function PenggunaPage({
     let kueri = supabase
         .from("pengguna")
         .select(
-            "id, nama_lengkap, role, aktif, unit_kerja_id, unit_kerja, email, sandi_sementara",
+            "id, nama_lengkap, role, aktif, unit_kerja_id, unit_kerja, nama_pengguna, sandi_sementara",
         );
 
     const kataKunci = siapkanKataKunci(cari);
     if (kataKunci) {
         kueri = kueri.or(
-            `nama_lengkap.ilike."%${kataKunci}%",email.ilike."%${kataKunci}%"`,
+            `nama_lengkap.ilike."%${kataKunci}%",nama_pengguna.ilike."%${kataKunci}%"`,
         );
     }
 

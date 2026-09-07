@@ -12,6 +12,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { DOMAIN_SEKOLAH } from '../../src/lib/alamat.ts';
 
 const MIG = new URL('../migrations/', import.meta.url);
 
@@ -38,7 +39,7 @@ for (const f of readdirSync(MIG).filter(f => f.endsWith('.sql')).sort()) {
 for (const [kunci, a] of Object.entries(AKUN)) {
   await db.exec(`
     insert into auth.users (id, email, raw_user_meta_data)
-    values ('${a.id}', '${kunci}@smpn14.sch.id', jsonb_build_object('nama_lengkap', '${a.nama}'));
+    values ('${a.id}', '${kunci}@${DOMAIN_SEKOLAH}', jsonb_build_object('nama_lengkap', '${a.nama}'));
     update public.profil
        set role = '${a.role}',
            unit_kerja_id = (select id from public.unit_kerja where nama = '${a.unit}')

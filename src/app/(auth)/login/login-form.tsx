@@ -2,10 +2,11 @@
 
 import {
     AuthField,
-    AuthInput,
+    AuthInputBerdomain,
     PasswordInput,
 } from "@/components/auth/form-parts";
 import { FormAlert, SubmitButton } from "@/components/form-parts";
+import { alamatDari, tanpaAkhiranDomain } from "@/lib/alamat";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -21,9 +22,18 @@ export function LoginForm({ nonaktif = false }: { nonaktif?: boolean }) {
         setPending(true);
 
         const data = new FormData(event.currentTarget);
+        const nama = tanpaAkhiranDomain(String(data.get("email")));
+        const hasil = alamatDari(nama);
+
+        if (!hasil.ok) {
+            setGalat(hasil.galat);
+            setPending(false);
+            return;
+        }
+
         const supabase = createClient();
         const { error } = await supabase.auth.signInWithPassword({
-            email: String(data.get("email")),
+            email: hasil.alamat,
             password: String(data.get("sandi")),
         });
 
@@ -53,12 +63,15 @@ export function LoginForm({ nonaktif = false }: { nonaktif?: boolean }) {
             )}
 
             <AuthField id="email" label="Alamat Email">
-                <AuthInput
+                <AuthInputBerdomain
                     id="email"
                     name="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="nama@sekolah.sch.id"
+                    type="text"
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="guru.ipa"
                     required
                     autoFocus
                 />

@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DOMAIN_SEKOLAH } from "@/lib/alamat";
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff, type LucideIcon } from "lucide-react";
 import * as React from "react";
@@ -34,6 +35,25 @@ export function AuthInput({
     ...props
 }: React.ComponentProps<typeof Input>) {
     return <Input className={cn(TINGGI_KOLOM, className)} {...props} />;
+}
+
+/**
+ * AuthInput dengan domain sekolah tampil di sampingnya sebagai teks tetap
+ * yang tidak bisa dipilih - alamatnya tetap terbaca utuh dari kiri ke kanan
+ * tanpa pernah bisa diketik seluruhnya.
+ */
+export function AuthInputBerdomain({
+    className,
+    ...props
+}: React.ComponentProps<typeof Input>) {
+    return (
+        <div className="flex items-center gap-2">
+            <AuthInput className={cn("min-w-0 flex-1", className)} {...props} />
+            <span className="shrink-0 text-sm text-muted-foreground select-none">
+                @{DOMAIN_SEKOLAH}
+            </span>
+        </div>
+    );
 }
 
 export function PasswordInput({

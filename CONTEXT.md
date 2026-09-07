@@ -48,6 +48,15 @@ password is set without knowing the old one: there is no recovery email, and a
 forgotten password is an errand to tata usaha.
 _Avoid_: sandi awal, password default, reset password (for the act)
 
+**Alamat Email**:
+The address stored in Supabase Auth, not in profil — like passwords and
+sessions, it belongs to Auth. Its domain is fixed for the whole school and
+receives nothing: it identifies a person, it does not reach them. Only the
+half before the @, the nama pengguna, is ever typed, shown in a list, or read
+aloud; the domain sits beside an input and nowhere else. Tata usaha chooses it
+once, when the account is created, and it never changes afterwards.
+_Avoid_: username, user ID, akun (for the address)
+
 ### Goods and stock
 
 **Barang**:

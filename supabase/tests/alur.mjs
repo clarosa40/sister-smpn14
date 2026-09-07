@@ -1,5 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
+import { DOMAIN_SEKOLAH } from "../../src/lib/alamat.ts";
 
 const MIG = new URL("../migrations/", import.meta.url);
 const TU = "11111111-1111-1111-1111-111111111111"; // tata usaha
@@ -80,9 +81,9 @@ for (const f of readdirSync(MIG)
 
 await db.exec(`
 insert into auth.users (id, email) values
-  ('${TU}',  'tu@smpn14.sch.id'),
-  ('${PGR}', 'sarpras@smpn14.sch.id'),
-  ('${PGW}', 'guru.ipa@smpn14.sch.id');
+  ('${TU}',  'tu@${DOMAIN_SEKOLAH}'),
+  ('${PGR}', 'sarpras@${DOMAIN_SEKOLAH}'),
+  ('${PGW}', 'guru.ipa@${DOMAIN_SEKOLAH}');
 update public.profil set role = 'tata_usaha',
   unit_kerja_id = (select id from public.unit_kerja where nama = 'Tata Usaha')
   where id = '${TU}';
@@ -986,9 +987,16 @@ await as(TU, async () => {
     const email = Object.fromEntries(p.map((r) => [r.id, r.email]));
     ok(
         "email ikut terbawa dari auth.users",
-        email[TU] === "tu@smpn14.sch.id" &&
-            email[PGW] === "guru.ipa@smpn14.sch.id",
+        email[TU] === `tu@${DOMAIN_SEKOLAH}` &&
+            email[PGW] === `guru.ipa@${DOMAIN_SEKOLAH}`,
         JSON.stringify(email),
+    );
+
+    const namaPengguna = Object.fromEntries(p.map((r) => [r.id, r.nama_pengguna]));
+    ok(
+        "nama_pengguna adalah separuh alamat sebelum @",
+        namaPengguna[TU] === "tu" && namaPengguna[PGW] === "guru.ipa",
+        JSON.stringify(namaPengguna),
     );
 
     const guru = p.find((r) => r.id === PGW);
@@ -1182,7 +1190,7 @@ console.log("\n— permintaan pegawai —");
 // menghitung tepat tiga akun.
 const PGW2 = "44444444-4444-4444-4444-444444444444";
 await db.exec(`
-insert into auth.users (id, email) values ('${PGW2}', 'guru.mtk@smpn14.sch.id');
+insert into auth.users (id, email) values ('${PGW2}', 'guru.mtk@${DOMAIN_SEKOLAH}');
 update public.profil set
   unit_kerja_id = (select id from public.unit_kerja where nama = 'Guru')
   where id = '${PGW2}';`);

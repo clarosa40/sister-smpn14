@@ -1,6 +1,10 @@
 "use client";
 
-import { BidangDialog, DialogForm } from "@/components/admin/dialog-form";
+import {
+    BidangDialog,
+    BidangDialogBerdomain,
+    DialogForm,
+} from "@/components/admin/dialog-form";
 import { Pencarian } from "@/components/admin/pencarian";
 import { FormAlert } from "@/components/form-parts";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +40,7 @@ export type BarisPengguna = {
     aktif: boolean;
     unit_kerja_id: string | null;
     unit_kerja: string | null;
-    email: string;
+    nama_pengguna: string;
     sandi_sementara: boolean;
 };
 
@@ -121,7 +125,7 @@ export function PenggunaTabel({
                                             {akun.nama_lengkap}
                                         </p>
                                         <p className="truncate text-xs text-muted-foreground">
-                                            {akun.email}
+                                            {akun.nama_pengguna}
                                         </p>
                                     </div>
                                     <TombolBaris
@@ -185,7 +189,7 @@ export function PenggunaTabel({
                                                 {akun.nama_lengkap}
                                             </p>
                                             <p className="truncate text-xs text-muted-foreground">
-                                                {akun.email}
+                                                {akun.nama_pengguna}
                                             </p>
                                         </TableCell>
                                         <TableCell className="py-3 text-[13px] text-muted-foreground">
@@ -296,13 +300,16 @@ export function PenggunaTabel({
                     autoFocus
                     maxLength={120}
                 />
-                <BidangDialog
+                <BidangDialogBerdomain
                     id="email"
                     label="Alamat Email"
-                    type="email"
-                    placeholder="nama@smpn14.sch.id"
+                    type="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="guru.ipa"
                     required
-                    petunjuk="Dipakai untuk masuk, dan tidak bisa diubah lagi setelah ini."
+                    petunjuk="Dipakai untuk masuk bersama @smpn14.local, dan tidak bisa diubah lagi setelah ini."
                 />
                 <BidangPilih
                     id="role"

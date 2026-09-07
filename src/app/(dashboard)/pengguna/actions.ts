@@ -10,6 +10,7 @@ import {
     type HasilAksi,
     type PesanKhas,
 } from "@/lib/aksi";
+import { alamatDari } from "@/lib/alamat";
 import type { Role } from "@/lib/dal";
 import { sandiSementara } from "@/lib/sandi";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -222,8 +223,6 @@ export type HasilSandi =
     | { ok: true; sandi: string }
     | { ok: false; galat: string };
 
-const BENTUK_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /**
  * Membuat akun. Satu-satunya jalur di aplikasi ini yang menulis ke
  * auth.users, dan karena itu satu-satunya yang memegang klien
@@ -245,7 +244,7 @@ export async function buatAkun(
     await pastikanTataUsaha();
 
     const nama = teks(formData, "nama_lengkap");
-    const email = teks(formData, "email").toLowerCase();
+    const namaPengguna = teks(formData, "email");
     const role = teks(formData, "role") as Role;
     const unitKerjaId = teks(formData, "unit_kerja_id");
 
@@ -256,9 +255,15 @@ export async function buatAkun(
             galat: `Nama terlalu panjang, maksimal ${PANJANG_NAMA} karakter.`,
         };
     }
-    if (!BENTUK_EMAIL.test(email)) {
-        return { ok: false, galat: "Alamat email belum benar bentuknya." };
-    }
+
+    // Menolak juga nilai yang memuat "@": formulirnya tidak bisa
+    // menghasilkannya, tapi POST hasil rekayasa bisa - dan tanpa penjaga ini
+    // itu membuat akun di domain yang tidak terjangkau formulir masuk,
+    // permanen sebab alamatnya tidak bisa diubah.
+    const hasilAlamat = alamatDari(namaPengguna);
+    if (!hasilAlamat.ok) return { ok: false, galat: hasilAlamat.galat };
+    const email = hasilAlamat.alamat;
+
     if (!PERAN.includes(role)) {
         return { ok: false, galat: "Peran belum dipilih." };
     }

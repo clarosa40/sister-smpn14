@@ -14,7 +14,9 @@ at a handful of messages an hour and is explicitly not for production, so a
 recovery email addressed to a teacher would either not arrive or arrive too late
 to matter. Making it real needs a paid SMTP provider and a domain to send from —
 a running cost and an ownership question for a one-school system whose entire
-staff can walk to the tata usaha office.
+staff can walk to the tata usaha office. Every account already sits on a fixed
+domain that receives nothing, chosen to identify a person rather than reach
+one — recovery by email was never reachable, not even on paper.
 
 ## Considered options
 
