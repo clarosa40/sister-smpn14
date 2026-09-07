@@ -241,6 +241,81 @@ const ZONA = "Asia/Jakarta";
 export const tanggalHariIni = (): string =>
     new Intl.DateTimeFormat("en-CA", { timeZone: ZONA }).format(new Date());
 
+export const BATAS_MUNDUR_TANGGAL_HARI = 30;
+
+/**
+ * Mundur sejumlah hari dari sebuah tanggal YYYY-MM-DD, sebagai tanggal
+ * kalender - bukan jam. Diurai dan disusun ulang lewat Date.UTC() supaya
+ * aritmetikanya sendiri tidak bergantung pada zona waktu proses; nilai
+ * "hariIni" yang masuk sudah benar (dari tanggalHariIni()), jadi ini
+ * murni menghitung mundur dari tanggal itu, bukan menebak hari ini lagi.
+ */
+export const mundurHari = (tanggal: string, hari: number): string => {
+    const [tahun, bulan, hariBulan] = tanggal.split("-").map(Number);
+    const mundur = new Date(Date.UTC(tahun, bulan - 1, hariBulan - hari));
+    return mundur.toISOString().slice(0, 10);
+};
+
+/** Sebangun dengan HasilAksi di lib/aksi.ts, untuk kegunaan yang sama. */
+export type HasilTanggal = { ok: true } | { ok: false; galat: string };
+
+const GALAT_TANGGAL_MASA_DEPAN =
+    "Tanggal permintaan tidak boleh di masa depan.";
+
+const galatTanggalTerlaluLama = (batas: number): string =>
+    `Tanggal permintaan tidak boleh lebih dari ${batas} hari ke belakang. Untuk permintaan yang lebih lama, hubungi tata usaha.`;
+
+/**
+ * Satu-satunya aturan di fitur tanggal permintaan yang tidak punya padanan
+ * di basis data: migrasinya mengisi baris lama dari diajukan_at, yang
+ * hampir semuanya sudah lebih tua dari batas mundur ini, jadi sebuah
+ * constraint yang menegakkan batas penuh tidak akan pernah bisa
+ * ditambahkan (lihat migrasi permintaan-tanggal). Basis data hanya
+ * menolak tanggal di masa depan; batas mundur tiga puluh hari murni ada
+ * di sini.
+ *
+ * "hariIni" diterima sebagai argumen, bukan dibaca dari jam, supaya
+ * pengujian bisa mematok satu tanggal tertentu. Perbandingannya string
+ * YYYY-MM-DD, bukan Date: keduanya dihitung di zona waktu sekolah, jadi
+ * tidak ada tengah malam UTC yang membuat "hari ini" jadi kemarin.
+ */
+export function periksaTanggalPermintaan(
+    tanggal: string,
+    hariIni: string,
+): HasilTanggal {
+    if (tanggal > hariIni) {
+        return { ok: false, galat: GALAT_TANGGAL_MASA_DEPAN };
+    }
+    if (tanggal < mundurHari(hariIni, BATAS_MUNDUR_TANGGAL_HARI)) {
+        return {
+            ok: false,
+            galat: galatTanggalTerlaluLama(BATAS_MUNDUR_TANGGAL_HARI),
+        };
+    }
+    return { ok: true };
+}
+
+/**
+ * Aturan yang dulu berbunyi "tidak boleh sebelum hari ini" - yang
+ * sebenarnya selalu berarti "tidak boleh butuh sebelum meminta", dan
+ * hanya terbaca sebagai hari ini selama kedua tanggal itu masih tanggal
+ * yang sama. Permintaan susulan untuk barang yang dibutuhkan 2 September
+ * tapi baru diketik tanggal 4 harus tetap diterima. Kosong selalu
+ * diterima: tanggal dibutuhkan memang opsional.
+ */
+export function periksaTanggalDibutuhkan(
+    tanggalDibutuhkan: string,
+    tanggalPermintaan: string,
+): HasilTanggal {
+    if (tanggalDibutuhkan && tanggalDibutuhkan < tanggalPermintaan) {
+        return {
+            ok: false,
+            galat: "Tanggal dibutuhkan tidak boleh sebelum tanggal permintaan.",
+        };
+    }
+    return { ok: true };
+}
+
 /** "3 September 2026" - tanggal dibutuhkan dan tanggal pengajuan. */
 export const tanggalPanjang = (nilai: string): string =>
     new Intl.DateTimeFormat("id-ID", {

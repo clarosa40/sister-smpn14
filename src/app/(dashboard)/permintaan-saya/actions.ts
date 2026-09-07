@@ -5,6 +5,8 @@ import {
     GALAT_KERANJANG_HILANG,
     PANJANG_CATATAN,
     PANJANG_KEPERLUAN,
+    periksaTanggalDibutuhkan,
+    periksaTanggalPermintaan,
     pesanGalatPermintaan,
     tanggalHariIni,
 } from "@/lib/permintaan";
@@ -19,11 +21,11 @@ const GALAT_PINDAH =
     "Permintaan ini sudah berpindah status. Muat ulang halamannya.";
 
 /**
- * Mengajukan keranjang. Keperluan, tanggal dibutuhkan, dan catatan baru
- * ditanyakan di sini - bukan di klik pertama - karena di titik ini
- * pemohonnya sudah melihat seluruh daftar barangnya.
+ * Mengajukan keranjang. Keperluan, tanggal permintaan, tanggal dibutuhkan,
+ * dan catatan baru ditanyakan di sini - bukan di klik pertama - karena di
+ * titik ini pemohonnya sudah melihat seluruh daftar barangnya.
  *
- * Ketiganya ditulis bersama status dalam satu UPDATE. Trigger yang
+ * Semuanya ditulis bersama status dalam satu UPDATE. Trigger yang
  * menerbitkan nomor SPB dan mencap diajukan_at; baris lognya ditulis
  * catat_log_permintaan(). Tidak ada satu pun dari itu yang perlu diketik
  * di sini.
@@ -36,7 +38,11 @@ export async function ajukanPermintaan(
     await pastikanPegawai();
 
     const keperluan = teks(formData, "keperluan");
-    const tanggal = teks(formData, "tanggal_dibutuhkan");
+    // Kosong berarti "hari ini", bukan "belum diisi": kolomnya sudah
+    // terisi hari ini secara default, jadi terkirim kosong hanya berarti
+    // isian itu tidak disentuh.
+    const tanggal = teks(formData, "tanggal") || tanggalHariIni();
+    const tanggalDibutuhkan = teks(formData, "tanggal_dibutuhkan");
     const catatan = teks(formData, "catatan_pemohon");
 
     if (!keperluan) return { ok: false, galat: "Keperluan belum diisi." };
@@ -52,22 +58,23 @@ export async function ajukanPermintaan(
             galat: `Catatan terlalu panjang, maksimal ${PANJANG_CATATAN} karakter.`,
         };
     }
-    // Perbandingan teks, bukan Date: keduanya YYYY-MM-DD dan keduanya
-    // dihitung di zona waktu sekolah, jadi tidak ada tengah malam UTC yang
-    // membuat "hari ini" jadi kemarin.
-    if (tanggal && tanggal < tanggalHariIni()) {
-        return {
-            ok: false,
-            galat: "Tanggal dibutuhkan tidak boleh sebelum hari ini.",
-        };
-    }
+
+    const hasilTanggal = periksaTanggalPermintaan(tanggal, tanggalHariIni());
+    if (!hasilTanggal.ok) return hasilTanggal;
+
+    const hasilTanggalDibutuhkan = periksaTanggalDibutuhkan(
+        tanggalDibutuhkan,
+        tanggal,
+    );
+    if (!hasilTanggalDibutuhkan.ok) return hasilTanggalDibutuhkan;
 
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("permintaan")
         .update({
             keperluan,
-            tanggal_dibutuhkan: tanggal || null,
+            tanggal,
+            tanggal_dibutuhkan: tanggalDibutuhkan || null,
             catatan_pemohon: catatan || null,
             status: "diajukan",
         })

@@ -143,12 +143,18 @@ export function BidangDialog({
     label,
     petunjuk,
     defaultValue = "",
+    onNilaiBerubah,
     ...props
-}: Omit<React.ComponentProps<typeof Input>, "defaultValue" | "value"> & {
+}: Omit<
+    React.ComponentProps<typeof Input>,
+    "defaultValue" | "value" | "onChange"
+> & {
     id: string;
     label: string;
     petunjuk?: string;
     defaultValue?: string;
+    /** Dipanggil setelah state internalnya sendiri, untuk kolom lain yang isinya bergantung pada ini - misalnya batas minimum kolom tanggal lain. */
+    onNilaiBerubah?: (nilai: string) => void;
 }) {
     const [nilai, setNilai] = React.useState(defaultValue);
 
@@ -162,7 +168,10 @@ export function BidangDialog({
                 name={id}
                 className="h-9.5"
                 value={nilai}
-                onChange={(e) => setNilai(e.target.value)}
+                onChange={(e) => {
+                    setNilai(e.target.value);
+                    onNilaiBerubah?.(e.target.value);
+                }}
                 {...props}
             />
             {petunjuk && (

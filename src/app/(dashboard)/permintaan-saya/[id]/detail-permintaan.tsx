@@ -6,7 +6,9 @@ import { BidangDialog, DialogForm } from "@/components/admin/dialog-form";
 import { FormAlert } from "@/components/form-parts";
 import { Button } from "@/components/ui/button";
 import {
+    BATAS_MUNDUR_TANGGAL_HARI,
     kalimatLog,
+    mundurHari,
     PANJANG_CATATAN,
     PANJANG_KEPERLUAN,
     tanggalHariIni,
@@ -270,12 +272,8 @@ export function DetailPermintaan({
                     autoFocus
                     maxLength={PANJANG_KEPERLUAN}
                 />
-                <BidangDialog
-                    id="tanggal_dibutuhkan"
-                    label="Tanggal Dibutuhkan (opsional)"
-                    type="date"
-                    min={tanggalHariIni()}
-                    defaultValue={permintaan.tanggal_dibutuhkan ?? ""}
+                <KolomTanggal
+                    tanggalDibutuhkanAwal={permintaan.tanggal_dibutuhkan ?? ""}
                 />
                 <BidangDialog
                     id="catatan_pemohon"
@@ -340,5 +338,44 @@ function Keterangan({ permintaan }: { permintaan: BarisDetail }) {
                 />
             )}
         </dl>
+    );
+}
+
+/**
+ * Tanggal permintaan dan tanggal dibutuhkan sekaligus, karena batas bawah
+ * yang kedua mengikuti isian yang pertama: begitu tanggal permintaan
+ * diundurkan, tanggal dibutuhkan tidak boleh lagi jatuh sebelum hari itu.
+ * State-nya lokal di sini (bukan di DetailPermintaan) supaya remount lewat
+ * `key` pada DialogForm ikut mengembalikannya ke hari ini setiap dialog
+ * dibuka lagi.
+ */
+function KolomTanggal({
+    tanggalDibutuhkanAwal,
+}: {
+    tanggalDibutuhkanAwal: string;
+}) {
+    const hariIni = tanggalHariIni();
+    const [tanggal, setTanggal] = React.useState(hariIni);
+
+    return (
+        <>
+            <BidangDialog
+                id="tanggal"
+                label="Tanggal permintaan"
+                type="date"
+                required
+                min={mundurHari(hariIni, BATAS_MUNDUR_TANGGAL_HARI)}
+                max={hariIni}
+                defaultValue={hariIni}
+                onNilaiBerubah={setTanggal}
+            />
+            <BidangDialog
+                id="tanggal_dibutuhkan"
+                label="Tanggal Dibutuhkan (opsional)"
+                type="date"
+                min={tanggal}
+                defaultValue={tanggalDibutuhkanAwal}
+            />
+        </>
     );
 }
