@@ -29,8 +29,8 @@ Menu access follows exactly:
 | Penyesuaian | | y |
 
 Pegawai is untouched. A blank cell means no menu and no write; reads stay open
-to `is_staf()`, because the approver is better for seeing the stock story and
-narrowing them would be RLS churn against no stated need.
+to `is_staf()`, because pengurus barang is better for seeing the stock story
+and narrowing them would be RLS churn against no stated need.
 
 ## Considered options
 
