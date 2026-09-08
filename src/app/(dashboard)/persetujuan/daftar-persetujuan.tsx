@@ -11,6 +11,7 @@ export type BarisPersetujuan = {
     status: StatusPermintaan;
     keperluan: string;
     tanggal_dibutuhkan: string | null;
+    tanggal: string | null;
     diajukan_at: string | null;
     pemohon: { nama_lengkap: string } | null;
     unit_kerja: { nama: string } | null;
@@ -139,8 +140,15 @@ function BarisAntrean({ permintaan }: { permintaan: BarisPersetujuan }) {
                     <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
                         {permintaan.keperluan}
                     </p>
+                    {/* Tanggal permintaan dan tanggal diajukan tampil
+                        berdampingan, selalu - bahkan ketika keduanya sama
+                        tanggal - supaya pembaca yang tidak pernah melihat
+                        keduanya berbeda tidak berhenti mencarinya pada
+                        hari itu justru berbeda. */}
                     <p className="mt-0.5 text-xs text-muted-foreground">
                         {permintaan.permintaan_item.length} barang
+                        {permintaan.tanggal &&
+                            ` · ${tanggalPanjang(permintaan.tanggal)}`}
                         {permintaan.diajukan_at &&
                             ` · diajukan ${tanggalPanjang(permintaan.diajukan_at)}`}
                         {permintaan.tanggal_dibutuhkan &&

@@ -40,6 +40,7 @@ export type BarisKeputusan = {
     tanggal_dibutuhkan: string | null;
     catatan_pemohon: string | null;
     alasan_tolak: string | null;
+    tanggal: string | null;
     diajukan_at: string | null;
     pemohon: { nama_lengkap: string } | null;
     unit_kerja: { nama: string } | null;
@@ -104,6 +105,14 @@ export function KeputusanPermintaan({
                 />
                 <BarisKeterangan label="Keperluan" nilai={permintaan.keperluan} />
                 <BarisKeterangan
+                    label="Tanggal permintaan"
+                    nilai={
+                        permintaan.tanggal
+                            ? tanggalPanjang(permintaan.tanggal)
+                            : "—"
+                    }
+                />
+                <BarisKeterangan
                     label="Tanggal dibutuhkan"
                     nilai={
                         permintaan.tanggal_dibutuhkan
@@ -112,7 +121,7 @@ export function KeputusanPermintaan({
                     }
                 />
                 <BarisKeterangan
-                    label="Diajukan"
+                    label="Tanggal diajukan"
                     nilai={
                         permintaan.diajukan_at
                             ? tanggalPanjang(permintaan.diajukan_at)

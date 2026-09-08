@@ -20,7 +20,7 @@ const PER_HALAMAN = 25;
  * FK ke profil, jadi `profil ( nama_lengkap )` telanjang membuat
  * PostgREST menjawab PGRST201 alih-alih memilih salah satu.
  */
-const KOLOM = `id, nomor, status, keperluan, tanggal_dibutuhkan, diajukan_at, siap_at,
+const KOLOM = `id, nomor, status, keperluan, tanggal_dibutuhkan, tanggal, diajukan_at, siap_at,
      pemohon:profil!permintaan_pemohon_id_fkey ( nama_lengkap ),
      unit_kerja ( nama ),
      permintaan_item ( id )`;
@@ -78,9 +78,16 @@ export default async function PermintaanMasukPage({
         kueri = kueri.eq("status", "disetujui");
     }
 
+    // Kedua antrean (Siapkan, Serahkan) dikuras menurut urutan tiba -
+    // diajukan_at atau siap_at - sebab pekerjaan yang sudah menunggu tidak
+    // boleh dilangkahi permintaan yang tanggalnya sengaja dimundurkan.
+    // Riwayat sebaliknya adalah catatan kejadian sekolah, jadi ia mengurut
+    // tanggal permintaan, dengan diajukan_at sebagai penentu kalau dua
+    // permintaan sama-sama tercatat pada tanggal yang sama.
     const daftar = riwayat
         ? await kueri
-              .order("updated_at", { ascending: false })
+              .order("tanggal", { ascending: false })
+              .order("diajukan_at", { ascending: false })
               .range(dari, dari + PER_HALAMAN - 1)
         : await kueri.order(tampilan === "serahkan" ? "siap_at" : "diajukan_at");
 

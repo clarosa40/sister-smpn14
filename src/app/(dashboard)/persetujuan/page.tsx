@@ -18,7 +18,7 @@ const PER_HALAMAN = 25;
  * PostgREST menjawab PGRST201 alih-alih memilih salah satu. unit_kerja
  * hanya punya satu dan karena itu tidak membutuhkannya.
  */
-const KOLOM = `id, nomor, status, keperluan, tanggal_dibutuhkan, diajukan_at,
+const KOLOM = `id, nomor, status, keperluan, tanggal_dibutuhkan, tanggal, diajukan_at,
      pemohon:profil!permintaan_pemohon_id_fkey ( nama_lengkap ),
      unit_kerja ( nama ),
      permintaan_item ( id )`;
@@ -66,11 +66,15 @@ export default async function PersetujuanPage({
         kueri = kueri.eq("status", "diajukan");
     }
 
-    // Antrean dilayani menurut urutan datang dan tidak dipaginasi - ia
-    // memang untuk dihabiskan. Riwayat justru sebaliknya: menumpuk, jadi
-    // yang terbaru di atas dan 25 per halaman.
+    // Antrean dilayani menurut urutan datang - diajukan_at - dan tidak
+    // dipaginasi: ia memang untuk dihabiskan, dan permintaan yang
+    // tanggalnya sengaja dimundurkan tidak boleh melangkahi yang sudah
+    // menunggu lebih dulu. Riwayat justru catatan kejadian sekolah, jadi
+    // ia mengurut tanggal permintaan, dengan diajukan_at sebagai penentu
+    // kalau dua permintaan sama-sama tercatat pada tanggal yang sama.
     const daftar = riwayat
         ? await kueri
+              .order("tanggal", { ascending: false })
               .order("diajukan_at", { ascending: false })
               .range(dari, dari + PER_HALAMAN - 1)
         : await kueri.order("diajukan_at");

@@ -50,6 +50,7 @@ export type BarisDetail = {
     catatan_pemohon: string | null;
     alasan_tolak: string | null;
     created_at: string;
+    tanggal: string | null;
     diajukan_at: string | null;
     permintaan_item: ItemDetail[];
 };
@@ -316,6 +317,14 @@ function Keterangan({ permintaan }: { permintaan: BarisDetail }) {
         <dl className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
             <BarisKeterangan label="Keperluan" nilai={permintaan.keperluan} />
             <BarisKeterangan
+                label="Tanggal permintaan"
+                nilai={
+                    permintaan.tanggal
+                        ? tanggalPanjang(permintaan.tanggal)
+                        : "—"
+                }
+            />
+            <BarisKeterangan
                 label="Tanggal dibutuhkan"
                 nilai={
                     permintaan.tanggal_dibutuhkan
@@ -324,7 +333,7 @@ function Keterangan({ permintaan }: { permintaan: BarisDetail }) {
                 }
             />
             <BarisKeterangan
-                label="Diajukan"
+                label="Tanggal diajukan"
                 nilai={
                     permintaan.diajukan_at
                         ? tanggalPanjang(permintaan.diajukan_at)

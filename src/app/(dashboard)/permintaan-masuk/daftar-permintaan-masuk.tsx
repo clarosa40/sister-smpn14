@@ -17,6 +17,7 @@ export type BarisPermintaanMasuk = {
     status: StatusPermintaan;
     keperluan: string;
     tanggal_dibutuhkan: string | null;
+    tanggal: string | null;
     diajukan_at: string | null;
     siap_at: string | null;
     pemohon: { nama_lengkap: string } | null;
@@ -150,12 +151,20 @@ function BarisAntrean({
         .filter(Boolean)
         .join(" · ");
 
+    // Tanggal permintaan dan tanggal diajukan tampil berdampingan, selalu -
+    // bahkan ketika keduanya sama tanggal - supaya pembaca yang tidak
+    // pernah melihat keduanya berbeda tidak berhenti mencarinya pada hari
+    // itu justru berbeda. "Siap" hanya menambah, bukan menggantikan,
+    // sebab ia bercerita tentang kejadian lain: kapan barangnya selesai
+    // disiapkan.
     const keterangan = [
         `${permintaan.permintaan_item.length} barang`,
-        tampilan === "serahkan" && permintaan.siap_at
-            ? `siap ${waktuSingkat(permintaan.siap_at)}`
-            : permintaan.diajukan_at &&
-              `diajukan ${tanggalPanjang(permintaan.diajukan_at)}`,
+        permintaan.tanggal && tanggalPanjang(permintaan.tanggal),
+        permintaan.diajukan_at &&
+            `diajukan ${tanggalPanjang(permintaan.diajukan_at)}`,
+        tampilan === "serahkan" &&
+            permintaan.siap_at &&
+            `siap ${waktuSingkat(permintaan.siap_at)}`,
         tampilan !== "riwayat" &&
             permintaan.tanggal_dibutuhkan &&
             `dibutuhkan ${tanggalPanjang(permintaan.tanggal_dibutuhkan)}`,

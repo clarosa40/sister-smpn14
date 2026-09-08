@@ -35,7 +35,7 @@ export default async function KeputusanPermintaanPage({
         .from("permintaan")
         .select(
             `id, nomor, status, keperluan, tanggal_dibutuhkan, catatan_pemohon,
-             alasan_tolak, diajukan_at,
+             alasan_tolak, tanggal, diajukan_at,
              pemohon:profil!permintaan_pemohon_id_fkey ( nama_lengkap ),
              unit_kerja ( nama ),
              permintaan_item ( id, barang_id, nama_barang_snapshot, satuan_snapshot, jumlah_diminta )`,

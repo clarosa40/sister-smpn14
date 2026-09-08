@@ -33,7 +33,7 @@ export default async function DetailPermintaanPage({
         .from("permintaan")
         .select(
             `id, nomor, status, keperluan, tanggal_dibutuhkan, catatan_pemohon,
-             alasan_tolak, created_at, diajukan_at,
+             alasan_tolak, created_at, tanggal, diajukan_at,
              permintaan_item ( id, barang_id, nama_barang_snapshot, satuan_snapshot, jumlah_diminta )`,
         )
         .eq("id", id)

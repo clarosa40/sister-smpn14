@@ -12,7 +12,7 @@ export type BarisPermintaan = {
     nomor: string | null;
     status: StatusPermintaan;
     keperluan: string;
-    created_at: string;
+    tanggal: string | null;
     permintaan_item: { id: string }[];
 };
 
@@ -83,8 +83,9 @@ export function DaftarPermintaan({
                                         {p.keperluan}
                                     </p>
                                     <p className="mt-0.5 text-xs text-muted-foreground">
-                                        {p.permintaan_item.length} barang ·{" "}
-                                        {tanggalPanjang(p.created_at)}
+                                        {p.permintaan_item.length} barang
+                                        {p.tanggal &&
+                                            ` · ${tanggalPanjang(p.tanggal)}`}
                                     </p>
                                 </div>
                                 <ChevronRight

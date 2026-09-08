@@ -22,14 +22,18 @@ export default async function PermintaanSayaPage() {
         // .eq("pemohon_id") tidak menggantikan RLS - policy baca_permintaan
         // sudah menyempitkannya - tetapi menuliskannya membuat maksud kueri
         // ini terbaca tanpa harus membuka rls.sql.
+        // Ini pun riwayat - catatan kejadian sekolah - jadi ia mengurut
+        // tanggal permintaan, dengan diajukan_at sebagai penentu kalau dua
+        // permintaan pegawai ini sama-sama tercatat pada tanggal yang sama.
         supabase
             .from("permintaan")
             .select(
-                "id, nomor, status, keperluan, created_at, permintaan_item ( id )",
+                "id, nomor, status, keperluan, tanggal, diajukan_at, permintaan_item ( id )",
             )
             .eq("pemohon_id", user.id)
             .neq("status", "draft")
-            .order("created_at", { ascending: false }),
+            .order("tanggal", { ascending: false })
+            .order("diajukan_at", { ascending: false }),
     ]);
 
     if (riwayat.error) {
