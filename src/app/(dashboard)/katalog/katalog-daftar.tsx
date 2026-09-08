@@ -86,7 +86,7 @@ export function KatalogDaftar({
                 <p className="rounded-xl border border-border bg-card px-5 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
                     {cari
                         ? `Tidak ada barang yang cocok dengan “${cari}”.`
-                        : "Katalog masih kosong. Barang muncul di sini setelah pengurus barang mencatat penerimaan pertama."}
+                        : "Katalog masih kosong. Barang muncul di sini setelah tata usaha mencatat penerimaan pertama."}
                 </p>
             ) : (
                 <ul className="flex flex-col gap-2">

@@ -8,7 +8,7 @@ import {
 /**
  * Potongan tampilan permintaan yang dipakai dua peran. Keduanya lahir di
  * halaman pegawai dan pindah ke sini begitu halaman persetujuan ikut
- * memakainya - halaman tata usaha yang mengimpor dari halaman pegawai
+ * memakainya - halaman pengurus barang yang mengimpor dari halaman pegawai
  * akan jadi ketergantungan yang salah arah.
  *
  * Sengaja tanpa "use client". Tidak ada hook di sini, jadi komponen

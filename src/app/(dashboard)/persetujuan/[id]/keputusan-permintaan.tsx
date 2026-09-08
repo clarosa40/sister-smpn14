@@ -178,8 +178,8 @@ export function KeputusanPermintaan({
                 </h3>
                 {/* Disebutkan berikut namanya, tidak seperti garis waktu
                     pegawai: policy baca_profil membuka seluruh baris untuk
-                    is_staf(), dan dengan dua akun tata usaha, "Disetujui tata
-                    usaha" tidak menjawab apa pun. */}
+                    is_staf(), dan dengan dua akun pengurus barang, "Disetujui
+                    pengurus barang" tidak menjawab apa pun. */}
                 <ol className="divide-y divide-border">
                     {log.map((l) => (
                         <li

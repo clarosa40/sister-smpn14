@@ -57,16 +57,16 @@ export const NADA_STATUS: Record<StatusPermintaan, NadaStatus> = {
  * Policy baca_profil hanya membolehkan pegawai membaca barisnya sendiri,
  * jadi menyambung permintaan_log.oleh ke profil.nama_lengkap menghasilkan
  * null untuk siapa pun yang menyetujui. Itu batas yang disengaja, bukan
- * celah yang perlu ditambal dengan view baru: "Disetujui tata usaha" sudah
- * memberi tahu pemohon apa yang perlu ia tahu.
+ * celah yang perlu ditambal dengan view baru: "Disetujui pengurus barang"
+ * sudah memberi tahu pemohon apa yang perlu ia tahu.
  */
 const KALIMAT_LOG: Record<StatusPermintaan, string> = {
     draft: "Keranjang dibuat",
-    diajukan: "Diajukan ke tata usaha",
-    disetujui: "Disetujui tata usaha",
-    siap_diambil: "Barang disiapkan pengurus barang",
+    diajukan: "Diajukan ke pengurus barang",
+    disetujui: "Disetujui pengurus barang",
+    siap_diambil: "Barang disiapkan tata usaha",
     selesai: "Barang diserahkan",
-    ditolak: "Ditolak tata usaha",
+    ditolak: "Ditolak pengurus barang",
     dibatalkan: "Dibatalkan pemohon",
 };
 
@@ -82,8 +82,9 @@ export const kalimatLog = (status: StatusPermintaan): string =>
  * Ada dua catatan status di berkas ini, dan itu disengaja. KALIMAT_LOG
  * dipakai di layar pegawai, tempat nama penyetuju memang tidak
  * terjangkau (policy baca_profil). PELAKU_LOG dipakai di layar tata
- * usaha, tempat nama itu justru inti persoalannya: dengan dua akun tata
- * usaha, "Disetujui tata usaha" tidak menjawab apa pun.
+ * usaha dan pengurus barang, tempat nama itu justru inti persoalannya:
+ * dengan dua akun pengurus barang, "Disetujui pengurus barang" tidak
+ * menjawab apa pun.
  */
 const PELAKU_LOG: Record<StatusPermintaan, string> = {
     draft: "Keranjang dibuat",
