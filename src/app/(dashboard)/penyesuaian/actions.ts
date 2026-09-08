@@ -1,6 +1,6 @@
 "use server";
 
-import { pastikanPengurus, teks, type HasilAksi } from "@/lib/aksi";
+import { pastikanTataUsaha, teks, type HasilAksi } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
@@ -41,7 +41,7 @@ export async function catatPenyesuaian(
     _sebelumnya: HasilAksi | null,
     formData: FormData,
 ): Promise<HasilAksi> {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const barangId = teks(formData, "barang_id");
     const catatan = teks(formData, "catatan");

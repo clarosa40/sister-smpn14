@@ -1,4 +1,4 @@
-import { pastikanPengurus } from "@/lib/aksi";
+import { pastikanTataUsaha } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -25,7 +25,7 @@ export default async function PermintaanMasukDetailPage({
 }: {
     params: Promise<{ id: string }>;
 }) {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const { id } = await params;
     const supabase = await createClient();

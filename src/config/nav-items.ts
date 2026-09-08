@@ -41,13 +41,22 @@ export const NAV_ITEMS: NavItem[] = [
         roles: ["pegawai"],
     },
 
-    // Tata Usaha
+    // Pengurus Barang - menyetujui, lalu melihat stok yang disetujuinya
     {
         label: "Persetujuan",
         href: "/persetujuan",
         icon: CircleCheck,
-        roles: ["tata_usaha"],
+        roles: ["pengurus_barang"],
     },
+    {
+        label: "Stok Barang",
+        href: "/stok",
+        icon: Package,
+        roles: ["pengurus_barang", "tata_usaha"],
+    },
+
+    // Tata Usaha - data induk, lalu pekerjaan gudang dalam urutan kejadiannya:
+    // menerima, menyiapkan, lalu menyesuaikan hitungan
     {
         label: "Master Barang",
         href: "/master-barang",
@@ -66,31 +75,23 @@ export const NAV_ITEMS: NavItem[] = [
         icon: Users,
         roles: ["tata_usaha"],
     },
-
-    // Pengurus Barang
-    {
-        label: "Stok Barang",
-        href: "/stok",
-        icon: Package,
-        roles: ["pengurus_barang"],
-    },
     {
         label: "Penerimaan",
         href: "/penerimaan",
         icon: Download,
-        roles: ["pengurus_barang"],
+        roles: ["tata_usaha"],
     },
     {
         label: "Permintaan Masuk",
         href: "/permintaan-masuk",
         icon: ClipboardList,
-        roles: ["pengurus_barang"],
+        roles: ["tata_usaha"],
     },
     {
         label: "Penyesuaian",
         href: "/penyesuaian",
         icon: UnfoldHorizontal,
-        roles: ["pengurus_barang"],
+        roles: ["tata_usaha"],
     },
 ];
 

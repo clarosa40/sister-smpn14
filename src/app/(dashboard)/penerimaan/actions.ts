@@ -1,6 +1,6 @@
 "use server";
 
-import { pastikanPengurus, siapkanKataKunci, teks, type HasilAksi } from "@/lib/aksi";
+import { pastikanTataUsaha, siapkanKataKunci, teks, type HasilAksi } from "@/lib/aksi";
 import { keAoaEkspor, namaBerkasEkspor, type HasilEkspor, type KolomEkspor } from "@/lib/ekspor";
 import {
     MAKS_JUMLAH,
@@ -98,7 +98,7 @@ export async function catatPenerimaan(
     _sebelumnya: HasilAksi | null,
     formData: FormData,
 ): Promise<HasilAksi> {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const tanggal = teks(formData, "tanggal") || tanggalHariIni();
     const noDokumen = teks(formData, "no_dokumen");
@@ -200,7 +200,7 @@ export async function eksporPenerimaan(
     dari: string,
     sampai: string,
 ): Promise<HasilEkspor> {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const supabase = await createClient();
 

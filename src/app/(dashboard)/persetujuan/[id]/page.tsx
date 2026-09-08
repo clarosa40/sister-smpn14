@@ -1,4 +1,4 @@
-import { pastikanTataUsaha } from "@/lib/aksi";
+import { pastikanPengurus } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -26,7 +26,7 @@ export default async function KeputusanPermintaanPage({
 }: {
     params: Promise<{ id: string }>;
 }) {
-    await pastikanTataUsaha();
+    await pastikanPengurus();
 
     const { id } = await params;
     const supabase = await createClient();
@@ -41,9 +41,9 @@ export default async function KeputusanPermintaanPage({
              permintaan_item ( id, barang_id, nama_barang_snapshot, satuan_snapshot, jumlah_diminta )`,
         )
         .eq("id", id)
-        // Keranjang orang lain yang belum diajukan bukan urusan tata usaha,
-        // dan RLS tidak menyisihkannya: baca_permintaan disempitkan oleh
-        // is_staf(), bukan oleh status.
+        // Keranjang orang lain yang belum diajukan bukan urusan pengurus
+        // barang, dan RLS tidak menyisihkannya: baca_permintaan disempitkan
+        // oleh is_staf(), bukan oleh status.
         .neq("status", "draft")
         .maybeSingle<BarisKeputusan>();
 

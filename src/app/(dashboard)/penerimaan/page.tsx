@@ -1,5 +1,5 @@
 import { Paginasi } from "@/components/admin/paginasi";
-import { pastikanPengurus, siapkanKataKunci } from "@/lib/aksi";
+import { pastikanTataUsaha, siapkanKataKunci } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -37,7 +37,7 @@ export default async function PenerimaanPage({
         hal?: string;
     }>;
 }) {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const parameter = await searchParams;
     const cari = (parameter.cari ?? "").trim();

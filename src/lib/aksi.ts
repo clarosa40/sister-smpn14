@@ -32,7 +32,12 @@ export const GALAT_HILANG =
  * setiap aksi, bukan sekali di page.tsx.
  *
  * Ini lapis kedua, bukan gerbangnya: gerbang sesungguhnya ada di policy RLS
- * kelola_barang dan kelola_unit_kerja, yang berlaku bahkan kalau pemeriksaan
+ * kelola_barang, kelola_unit_kerja, dan kelola_profil (data induk, yang tidak
+ * berpindah); di kelola_penerimaan, kelola_penerimaan_item, dan fungsi
+ * SECURITY DEFINER siapkan_permintaan, catat_penerimaan, catat_penyesuaian
+ * (pekerjaan gudang, yang sekarang jadi milik tata usaha); dan di
+ * jaga_alur_permintaan(), yang membatasi siap_diambil/selesai pada is_tu()
+ * untuk serahkanPermintaanMasuk. Semuanya tetap berlaku kalau pemeriksaan
  * ini kelak terlupa dipasang.
  */
 export const pastikanTataUsaha = async (): Promise<User> =>
@@ -54,14 +59,23 @@ export const pastikanPegawai = async (): Promise<User> =>
 /**
  * Pasangan pastikanTataUsaha dan pastikanPegawai untuk halaman pengurus
  * barang. Sama seperti keduanya, ini lapis kedua, bukan gerbangnya:
- * gerbang sesungguhnya adalah policy kelola_penerimaan,
- * kelola_penerimaan_item, dan ketiga fungsi SECURITY DEFINER
- * (siapkan_permintaan, catat_penerimaan, catat_penyesuaian), yang tetap
- * berlaku kalau pemeriksaan ini kelak terlupa dipasang di sebuah aksi
- * baru.
+ * gerbang sesungguhnya adalah trigger jaga_alur_permintaan(), yang
+ * membatasi disetujui/ditolak pada is_pengurus() dan tetap berlaku kalau
+ * pemeriksaan ini kelak terlupa dipasang di sebuah aksi baru.
  */
 export const pastikanPengurus = async (): Promise<User> =>
     getUserOrRedirect(["pengurus_barang"]);
+
+/**
+ * Pasangan ketiga peran staf di atas untuk /stok, satu-satunya rute yang
+ * dicapai pengurus barang maupun tata usaha. Namanya mengikuti is_staf(),
+ * yang dicerminkannya persis: dua peran yang sama, alasan yang sama.
+ * Halamannya sendiri hanya baca - tidak ada aksi tulis untuk dijaga di
+ * sini, dan gerbang sesungguhnya adalah klausa `where public.is_staf()`
+ * di badan view stok_barang, bukan policy RLS terpisah.
+ */
+export const pastikanStaf = async (): Promise<User> =>
+    getUserOrRedirect(["pengurus_barang", "tata_usaha"]);
 
 /** Isi satu kolom formulir, sudah dirapikan ujung-ujungnya. */
 export const teks = (formData: FormData, nama: string): string =>

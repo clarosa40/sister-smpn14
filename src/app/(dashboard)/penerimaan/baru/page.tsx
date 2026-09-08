@@ -1,4 +1,4 @@
-import { pastikanPengurus } from "@/lib/aksi";
+import { pastikanTataUsaha } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { FormPenerimaan, type BarangOpsi } from "./form-penerimaan";
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
  * mengikuti pola yang sama dengan /katalog.
  */
 export default async function PenerimaanBaruPage() {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const supabase = await createClient();
     const { data, error } = await supabase

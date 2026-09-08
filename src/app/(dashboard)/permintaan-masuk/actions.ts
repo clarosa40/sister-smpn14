@@ -1,6 +1,6 @@
 "use server";
 
-import { pastikanPengurus, siapkanKataKunci, type HasilAksi } from "@/lib/aksi";
+import { pastikanTataUsaha, siapkanKataKunci, type HasilAksi } from "@/lib/aksi";
 import { keAoaEkspor, namaBerkasEkspor, type HasilEkspor, type KolomEkspor } from "@/lib/ekspor";
 import {
     barisEksporPermintaan,
@@ -39,7 +39,7 @@ const segarkan = (id: string) => {
  * pesanGalatPermintaan meneruskannya apa adanya lewat cabang P0001.
  */
 export async function siapkanPermintaanMasuk(id: string): Promise<HasilAksi> {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const supabase = await createClient();
     const { error } = await supabase.rpc("siapkan_permintaan", {
@@ -63,7 +63,7 @@ export async function siapkanPermintaanMasuk(id: string): Promise<HasilAksi> {
  * server dan ditolak diam-diam - nol baris, tanpa galat.
  */
 export async function serahkanPermintaanMasuk(id: string): Promise<HasilAksi> {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -111,7 +111,7 @@ export async function eksporRiwayatPermintaan(
     sampai: string,
     status: string,
 ): Promise<HasilEkspor> {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const supabase = await createClient();
 
