@@ -1,15 +1,8 @@
 "use client";
 
 import { BidangDialog, DialogForm } from "@/components/admin/dialog-form";
+import { BidangCari } from "@/components/kotak-cari";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { PANJANG_CATATAN, waktuSingkat } from "@/lib/permintaan";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
@@ -112,7 +105,13 @@ export function PenyesuaianDaftar({
                 labelSimpan="Simpan"
                 labelMenyimpan="Menyimpan"
             >
-                <BidangBarang barang={barang} />
+                <BidangCari
+                    id="barang_id"
+                    label="Barang"
+                    opsi={barang.map((b) => ({ nilai: b.id, label: b.nama }))}
+                    placeholder="Pilih barang"
+                    benda="barang"
+                />
                 <BidangDialog
                     id="jumlah_fisik"
                     label="Hasil Hitung Fisik"
@@ -132,30 +131,6 @@ export function PenyesuaianDaftar({
                     maxLength={PANJANG_CATATAN}
                 />
             </DialogForm>
-        </div>
-    );
-}
-
-function BidangBarang({ barang }: { barang: BarangOpsi[] }) {
-    const [nilai, setNilai] = React.useState("");
-
-    return (
-        <div className="flex flex-col gap-1.5">
-            <Label htmlFor="barang_id" className="text-[13px]">
-                Barang
-            </Label>
-            <Select name="barang_id" value={nilai} onValueChange={setNilai}>
-                <SelectTrigger id="barang_id">
-                    <SelectValue placeholder="Pilih barang" />
-                </SelectTrigger>
-                <SelectContent>
-                    {barang.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>
-                            {b.nama}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
         </div>
     );
 }

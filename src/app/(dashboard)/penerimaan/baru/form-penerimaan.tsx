@@ -3,14 +3,8 @@
 import { FormAlert, SubmitButton } from "@/components/form-parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { KotakCari } from "@/components/kotak-cari";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { PANJANG_CATATAN, PANJANG_NO_DOKUMEN } from "@/lib/penerimaan";
 import { tanggalHariIni } from "@/lib/permintaan";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
@@ -45,6 +39,11 @@ export function FormPenerimaan({ barang }: { barang: BarangOpsi[] }) {
 
     const barangById = React.useMemo(
         () => new Map(barang.map((b) => [b.id, b])),
+        [barang],
+    );
+
+    const opsiBarang = React.useMemo(
+        () => barang.map((b) => ({ nilai: b.id, label: b.nama })),
         [barang],
     );
 
@@ -141,23 +140,16 @@ export function FormPenerimaan({ barang }: { barang: BarangOpsi[] }) {
                     {baris.map((b) => (
                         <li key={b.key} className="flex flex-col gap-2.5 px-4 py-3">
                             <div className="flex items-center gap-2">
-                                <Select
-                                    value={b.barangId}
-                                    onValueChange={(nilai) =>
+                                <KotakCari
+                                    className="flex-1"
+                                    opsi={opsiBarang}
+                                    nilai={b.barangId}
+                                    onNilaiBerubah={(nilai) =>
                                         ubahBaris(b.key, { barangId: nilai })
                                     }
-                                >
-                                    <SelectTrigger className="flex-1">
-                                        <SelectValue placeholder="Pilih barang" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {barang.map((bo) => (
-                                            <SelectItem key={bo.id} value={bo.id}>
-                                                {bo.nama}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    placeholder="Pilih barang"
+                                    benda="barang"
+                                />
                                 <Button
                                     type="button"
                                     variant="ghost"
