@@ -65,6 +65,18 @@ from the school's inventory spreadsheet and means something outside this
 application.
 _Avoid_: item, produk, inventaris
 
+**Kode**:
+The barang's identifier, copied verbatim from the school's inventory
+spreadsheet: `1.1.7.01.02.01.001.00852`, a national asset-classification
+number. Segments of it do group barang — stationery, paper, cleaning, lab —
+but the school has no word for those groups and no column holding them; the
+grouping exists only inside the digits. SIPB does not model it. A screen that
+groups barang by kode is reading meaning that belongs to the classification
+scheme rather than to SMPN 14. Twenty-four characters long, and identical in
+its first twenty across a whole category, so it disambiguates two similar
+barang only at the very end — which is why no screen uses it as a label.
+_Avoid_: SKU, nomor barang, kategori (there is no kategori here)
+
 **Satuan**:
 The unit a barang is counted in: buah, rim, kotak.
 _Avoid_: unit, UOM
