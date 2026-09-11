@@ -405,7 +405,7 @@ await as(PGW, async () => {
     ).rows[0];
     ok(
         "nomor permintaan terbit saat diajukan",
-        q.nomor === "SPB-000001" && q.diajukan_at !== null,
+        /^SPB\/\d{4}\/\d{2}\/001$/.test(q.nomor) && q.diajukan_at !== null,
         q.nomor,
     );
 
@@ -1313,7 +1313,7 @@ await as(PGW, async () => {
     ok(
         "keranjang berisi boleh diajukan dan mendapat nomor SPB",
         p.status === "diajukan" &&
-            /^SPB-\d{6}$/.test(p.nomor) &&
+            /^SPB\/\d{4}\/\d{2}\/\d{3}$/.test(p.nomor) &&
             p.diajukan_at !== null,
         JSON.stringify(p),
     );
@@ -1558,7 +1558,7 @@ await as(TU, async () => {
         "tata usaha tidak bisa menulis ulang nomor SPB permintaan yang sudah diajukan",
         () =>
             db.query(
-                `update public.permintaan set nomor = 'SPB-999999' where id = '${permF}'`,
+                `update public.permintaan set nomor = 'SPB/9999/99/999' where id = '${permF}'`,
             ),
         "tidak bisa diubah lagi",
     );

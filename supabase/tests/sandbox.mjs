@@ -208,8 +208,7 @@ async function tangani(line) {
       await db.exec(`
         set session_replication_role = replica;
         truncate mutasi_stok, permintaan_log, permintaan_item, permintaan,
-                 penerimaan_item, penerimaan restart identity cascade;
-        alter sequence seq_permintaan restart;
+                 penerimaan_item, penerimaan, nomor_counter restart identity cascade;
         alter sequence seq_penerimaan restart;
         set session_replication_role = origin;`);
       console.log(abu('   transaksi dikosongkan; master dan akun tetap'));

@@ -185,7 +185,9 @@ _Avoid_: histori, arsip, log
 ### Documents
 
 **Nomor**:
-A document's human-readable identifier, from a single running sequence:
-`SPB-000001` for a permintaan, `TRM-000001` for a penerimaan. A permintaan
-gets one at submission, never before.
+A document's human-readable identifier. A permintaan's nomor encodes the
+tanggal permintaan and a per-year sequence: `SPB/2026/09/001` — prefix, year,
+month, three-digit counter that resets each year. A penerimaan keeps a single
+running sequence: `TRM-000001`. A permintaan gets its nomor at submission,
+never before.
 _Avoid_: kode, ID, reference number
