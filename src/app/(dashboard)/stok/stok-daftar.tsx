@@ -18,6 +18,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { keAoaEkspor, type KolomEkspor } from "@/lib/stok-ekspor";
 import { cocokPilihan, cocokTeks, dalamRentangStok } from "@/lib/stok-filter";
 import { cn } from "@/lib/utils";
 import {
@@ -32,8 +33,15 @@ import {
     useTable,
     type ReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown, X } from "lucide-react";
+import {
+    ArrowDown,
+    ArrowUp,
+    ChevronsUpDown,
+    FileSpreadsheet,
+    X,
+} from "lucide-react";
 import * as React from "react";
+import * as XLSX from "xlsx";
 
 export type BarisStok = {
     barang_id: string;
@@ -126,6 +134,33 @@ const daftarKolom = kolom.columns([
         cell: (info) => <StatusStok status={info.getValue()} />,
     }),
 ]);
+
+const KOLOM_EKSPOR: KolomEkspor<BarisStok>[] = [
+    { header: "Kode", nilai: (b) => b.kode },
+    { header: "Nama Barang", nilai: (b) => b.nama },
+    { header: "Satuan", nilai: (b) => b.satuan },
+    { header: "Stok", nilai: (b) => b.stok },
+    {
+        header: "Status",
+        nilai: (b) => (b.status === "kosong" ? "Kosong" : "Tersedia"),
+    },
+];
+
+/**
+ * Dipakai lewat `getSortedRowModel()`, bukan `getRowModel()`: yang terakhir
+ * sudah dipotong ke halaman aktif, sedangkan ekspor harus mencakup seluruh
+ * baris yang lolos filter dan sortir, bukan cuma 25 baris yang terlihat.
+ */
+function eksporExcel(table: ReactTable<typeof features, BarisStok>) {
+    const baris = table.getSortedRowModel().rows.map((row) => row.original);
+    const aoa = keAoaEkspor(baris, KOLOM_EKSPOR);
+    const sheet = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, "Stok");
+
+    const tanggal = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `stok-barang-${tanggal}.xlsx`);
+}
 
 /** Lebar kolom header dan padding sel, dari satu sumber supaya keduanya tidak melenceng. */
 const KELAS_KOLOM: Partial<Record<string, string>> = {
@@ -390,7 +425,10 @@ function AlatFilter({
     const terapkanRentangStok = (min: string, max: string) => {
         table
             .getColumn("stok")
-            ?.setFilterValue([angkaAtauUndefined(min), angkaAtauUndefined(max)]);
+            ?.setFilterValue([
+                angkaAtauUndefined(min),
+                angkaAtauUndefined(max),
+            ]);
     };
 
     const hapusFilter = () => {
@@ -518,6 +556,17 @@ function AlatFilter({
                         Hapus filter
                     </Button>
                 )}
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => eksporExcel(table)}
+                    className={filterAktif ? "" : "ml-auto"}
+                >
+                    <FileSpreadsheet />
+                    Ekspor Excel
+                </Button>
             </div>
         </div>
     );
