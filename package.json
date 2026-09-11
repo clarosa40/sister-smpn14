@@ -12,6 +12,7 @@
     "test:sandi": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/sandi.test.mjs",
     "test:alamat": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/alamat.test.mjs",
     "test:permintaan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/permintaan.test.mjs",
+    "test:penerimaan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/penerimaan.test.mjs",
     "test:stok-filter": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/stok-filter.test.mjs",
     "test:ekspor": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/ekspor.test.mjs"
   },

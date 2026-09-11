@@ -2,7 +2,7 @@
 //
 //   npm run test:ekspor
 
-import { keAoaEkspor } from "./ekspor.ts";
+import { keAoaEkspor, namaBerkasEkspor } from "./ekspor.ts";
 
 let lolos = 0;
 let gagal = 0;
@@ -63,6 +63,81 @@ ok(
             [{ header: "Status", nilai: (b) => (b.status === "kosong" ? "Kosong" : "Tersedia") }],
         )[1],
     ) === JSON.stringify(["Kosong"]),
+);
+
+console.log("\n— namaBerkasEkspor —");
+
+const HARI_INI = "2026-09-11";
+
+ok(
+    "dari dan sampai keduanya diisi",
+    namaBerkasEkspor({
+        prefix: "penerimaan",
+        dari: "2026-09-01",
+        sampai: "2026-09-30",
+        hariIni: HARI_INI,
+    }) === "penerimaan-2026-09-01-sd-2026-09-30.xlsx",
+);
+ok(
+    "cuma sampai diisi",
+    namaBerkasEkspor({
+        prefix: "penerimaan",
+        dari: "",
+        sampai: "2026-09-30",
+        hariIni: HARI_INI,
+    }) === "penerimaan-sd-2026-09-30.xlsx",
+);
+ok(
+    "cuma dari diisi",
+    namaBerkasEkspor({
+        prefix: "penerimaan",
+        dari: "2026-09-01",
+        sampai: "",
+        hariIni: HARI_INI,
+    }) === "penerimaan-2026-09-01-dst.xlsx",
+);
+ok(
+    "keduanya kosong jatuh ke hari ini, bukan jam saat fungsi berjalan",
+    namaBerkasEkspor({
+        prefix: "penerimaan",
+        dari: "",
+        sampai: "",
+        hariIni: HARI_INI,
+    }) === "penerimaan-semua-2026-09-11.xlsx",
+);
+ok(
+    "status terisi disisipkan setelah prefix",
+    namaBerkasEkspor({
+        prefix: "permintaan",
+        status: "selesai",
+        dari: "2026-09-01",
+        sampai: "2026-09-30",
+        hariIni: HARI_INI,
+    }) === "permintaan-selesai-2026-09-01-sd-2026-09-30.xlsx",
+);
+ok(
+    "status kosong (Semua) tidak menyisipkan apa pun",
+    namaBerkasEkspor({
+        prefix: "permintaan",
+        dari: "2026-09-01",
+        sampai: "2026-09-30",
+        hariIni: HARI_INI,
+    }) === "permintaan-2026-09-01-sd-2026-09-30.xlsx",
+);
+ok(
+    "dua rentang berbeda pada hari ekspor yang sama menghasilkan nama berbeda",
+    namaBerkasEkspor({
+        prefix: "penerimaan",
+        dari: "2026-09-01",
+        sampai: "2026-09-15",
+        hariIni: HARI_INI,
+    }) !==
+        namaBerkasEkspor({
+            prefix: "penerimaan",
+            dari: "2026-09-16",
+            sampai: "2026-09-30",
+            hariIni: HARI_INI,
+        }),
 );
 
 console.log(`\n${lolos} lolos, ${gagal} gagal`);

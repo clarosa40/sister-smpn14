@@ -1,4 +1,3 @@
-import { Pencarian } from "@/components/admin/pencarian";
 import { LencanaStatus } from "@/components/permintaan-parts";
 import {
     tanggalPanjang,
@@ -8,8 +7,12 @@ import {
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { AlatFilterRiwayat } from "./alat-filter-riwayat";
 
 export type Tampilan = "siapkan" | "serahkan" | "riwayat";
+
+/** Kosong berarti Semua status - sentinel Radix Select ditangani di AlatFilterRiwayat. */
+export type StatusRiwayat = "" | "selesai" | "ditolak";
 
 export type BarisPermintaanMasuk = {
     id: string;
@@ -49,22 +52,28 @@ export function DaftarPermintaanMasuk({
     baris,
     tampilan,
     cari,
+    dari,
+    sampai,
+    status,
 }: {
     baris: BarisPermintaanMasuk[];
     tampilan: Tampilan;
     cari: string;
+    dari: string;
+    sampai: string;
+    status: StatusRiwayat;
 }) {
     const kosong =
-        tampilan === "riwayat" && cari
-            ? `Tidak ada permintaan yang cocok dengan “${cari}”.`
+        tampilan === "riwayat" && (cari || dari || sampai || status)
+            ? "Tidak ada permintaan yang cocok dengan filter yang dipilih."
             : KOSONG[tampilan];
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-col gap-2.5">
                 <nav
                     aria-label="Tampilan permintaan masuk"
-                    className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-card p-1"
+                    className="flex w-fit shrink-0 items-center gap-1 rounded-lg border border-border bg-card p-1"
                 >
                     <TautanLihat
                         href={JALUR.siapkan}
@@ -87,11 +96,11 @@ export function DaftarPermintaanMasuk({
                 </nav>
 
                 {tampilan === "riwayat" && (
-                    <Pencarian
-                        awal={cari}
-                        jalur={JALUR.riwayat}
-                        placeholder="Cari nomor atau keperluan"
-                        ariaLabel="Cari permintaan"
+                    <AlatFilterRiwayat
+                        cari={cari}
+                        dari={dari}
+                        sampai={sampai}
+                        status={status}
                     />
                 )}
             </div>

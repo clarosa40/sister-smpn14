@@ -316,6 +316,14 @@ export function periksaTanggalDibutuhkan(
     return { ok: true };
 }
 
+/**
+ * "YYYY-MM-DD" dari sebuah timestamptz (mis. diajukan_at), di zona waktu
+ * sekolah - persis tanggalHariIni() tapi untuk sebuah cap waktu yang sudah
+ * ada, bukan untuk sekarang.
+ */
+export const tanggalDariCap = (cap: string): string =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: ZONA }).format(new Date(cap));
+
 /** "3 September 2026" - tanggal dibutuhkan dan tanggal pengajuan. */
 export const tanggalPanjang = (nilai: string): string =>
     new Intl.DateTimeFormat("id-ID", {
@@ -335,3 +343,77 @@ export const waktuSingkat = (nilai: string): string =>
         minute: "2-digit",
         timeZone: ZONA,
     }).format(new Date(nilai));
+
+/** Baris query permintaan Riwayat berikut item bersarangnya, seperlunya untuk ekspor. */
+export type PermintaanUntukEkspor = {
+    nomor: string | null;
+    tanggal: string | null;
+    diajukan_at: string | null;
+    status: StatusPermintaan;
+    alasan_tolak: string | null;
+    keperluan: string;
+    pemohon: { nama_lengkap: string } | null;
+    unit_kerja: { nama: string } | null;
+    permintaan_item: {
+        nama_barang_snapshot: string;
+        satuan_snapshot: string;
+        jumlah_diminta: number;
+        barang: { kode: string } | null;
+    }[];
+};
+
+export type BarisEksporPermintaan = {
+    nomor: string;
+    tanggalPermintaan: string;
+    tanggalDiajukan: string;
+    status: string;
+    alasanTolak: string;
+    pemohon: string;
+    unitKerja: string;
+    keperluan: string;
+    kode: string;
+    namaBarang: string;
+    satuan: string;
+    jumlahDiminta: number;
+};
+
+/**
+ * Satu dokumen jadi satu baris per permintaan_item, kepala dokumennya
+ * diulang di tiap baris. Status selalu terbaca sebagai kata, bukan enum
+ * mentah, dan tetap ada di kolomnya sendiri walau pembacanya sudah
+ * menyaring ke satu status - berkas ini boleh dibuka bulan-bulan setelah
+ * disimpan.
+ *
+ * Alasan Tolak kosong pada baris Selesai: halaman ini hanya menerima
+ * permintaan yang sudah disetujui, jadi status di sini hanya pernah
+ * "selesai" atau "ditolak" (Riwayat, bukan seluruh alur).
+ */
+export function barisEksporPermintaan(
+    dokumen: PermintaanUntukEkspor[],
+): BarisEksporPermintaan[] {
+    const baris: BarisEksporPermintaan[] = [];
+
+    for (const d of dokumen) {
+        const ditolak = d.status === "ditolak";
+        for (const item of d.permintaan_item) {
+            baris.push({
+                nomor: d.nomor ?? "",
+                tanggalPermintaan: d.tanggal ?? "",
+                tanggalDiajukan: d.diajukan_at
+                    ? tanggalDariCap(d.diajukan_at)
+                    : "",
+                status: ditolak ? "Ditolak" : "Selesai",
+                alasanTolak: ditolak ? (d.alasan_tolak ?? "") : "",
+                pemohon: d.pemohon?.nama_lengkap ?? "",
+                unitKerja: d.unit_kerja?.nama ?? "",
+                keperluan: d.keperluan,
+                kode: item.barang?.kode ?? "",
+                namaBarang: item.nama_barang_snapshot,
+                satuan: item.satuan_snapshot,
+                jumlahDiminta: item.jumlah_diminta,
+            });
+        }
+    }
+
+    return baris;
+}

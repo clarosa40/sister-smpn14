@@ -12,9 +12,16 @@ export const metadata: Metadata = {
 const PER_HALAMAN = 25;
 
 /** `hal` dihilangkan di halaman pertama supaya alamatnya tetap bersih. */
-export const alamatPenerimaan = (cari: string, halaman = 1): string => {
+export const alamatPenerimaan = (
+    cari: string,
+    halaman = 1,
+    dari = "",
+    sampai = "",
+): string => {
     const parameter = new URLSearchParams();
     if (cari) parameter.set("cari", cari);
+    if (dari) parameter.set("dari", dari);
+    if (sampai) parameter.set("sampai", sampai);
     if (halaman > 1) parameter.set("hal", String(halaman));
     const kueri = parameter.toString();
     return kueri ? `/penerimaan?${kueri}` : "/penerimaan";
@@ -23,12 +30,19 @@ export const alamatPenerimaan = (cari: string, halaman = 1): string => {
 export default async function PenerimaanPage({
     searchParams,
 }: {
-    searchParams: Promise<{ cari?: string; hal?: string }>;
+    searchParams: Promise<{
+        cari?: string;
+        dari?: string;
+        sampai?: string;
+        hal?: string;
+    }>;
 }) {
     await pastikanPengurus();
 
     const parameter = await searchParams;
     const cari = (parameter.cari ?? "").trim();
+    const dariTanggal = (parameter.dari ?? "").trim();
+    const sampaiTanggal = (parameter.sampai ?? "").trim();
     const halaman = Math.max(1, Number.parseInt(parameter.hal ?? "1", 10) || 1);
     const dari = (halaman - 1) * PER_HALAMAN;
 
@@ -46,6 +60,8 @@ export default async function PenerimaanPage({
             `nomor.ilike."%${kataKunci}%",no_dokumen.ilike."%${kataKunci}%"`,
         );
     }
+    if (dariTanggal) kueri = kueri.gte("tanggal", dariTanggal);
+    if (sampaiTanggal) kueri = kueri.lte("tanggal", sampaiTanggal);
 
     const daftar = await kueri
         .order("created_at", { ascending: false })
@@ -55,7 +71,7 @@ export default async function PenerimaanPage({
     // bukan dengan daftar kosong. Pembacanya dipulangkan ke halaman pertama,
     // bukan disuguhi pesan kerusakan.
     if (daftar.error?.code === "PGRST103" && halaman > 1) {
-        redirect(alamatPenerimaan(cari));
+        redirect(alamatPenerimaan(cari, 1, dariTanggal, sampaiTanggal));
     }
 
     if (daftar.error) {
@@ -76,6 +92,8 @@ export default async function PenerimaanPage({
             <DaftarPenerimaan
                 baris={(daftar.data ?? []) as unknown as BarisPenerimaan[]}
                 cari={cari}
+                dari={dariTanggal}
+                sampai={sampaiTanggal}
             />
 
             {total > 0 && (
@@ -86,7 +104,7 @@ export default async function PenerimaanPage({
                     ditampilkan={daftar.data?.length ?? 0}
                     total={total}
                     satuan="penerimaan"
-                    href={(h) => alamatPenerimaan(cari, h)}
+                    href={(h) => alamatPenerimaan(cari, h, dariTanggal, sampaiTanggal)}
                 />
             )}
         </div>

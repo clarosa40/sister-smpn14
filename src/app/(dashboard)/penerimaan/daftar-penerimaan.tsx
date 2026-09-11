@@ -1,8 +1,8 @@
-import { Pencarian } from "@/components/admin/pencarian";
 import { Button } from "@/components/ui/button";
 import { tanggalPanjang } from "@/lib/permintaan";
 import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
+import { AlatFilterPenerimaan } from "./alat-filter-penerimaan";
 
 export type BarisPenerimaan = {
     id: string;
@@ -13,27 +13,30 @@ export type BarisPenerimaan = {
 };
 
 /**
- * Tanpa "use client": Pencarian menulis kata kuncinya ke URL, jadi
- * halaman ini tidak butuh state peramban sama sekali - persis pola
- * Master Barang dan Riwayat Persetujuan.
+ * Tanpa "use client": AlatFilterPenerimaan menulis kata kunci dan
+ * rentang tanggalnya ke URL, jadi halaman ini tidak butuh state
+ * peramban sama sekali - persis pola Master Barang dan Riwayat
+ * Persetujuan.
  */
 export function DaftarPenerimaan({
     baris,
     cari,
+    dari,
+    sampai,
 }: {
     baris: BarisPenerimaan[];
     cari: string;
+    dari: string;
+    sampai: string;
 }) {
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2.5">
-                <Pencarian
-                    awal={cari}
-                    jalur="/penerimaan"
-                    placeholder="Cari nomor atau no dokumen"
-                    ariaLabel="Cari penerimaan"
-                />
-                <Button asChild className="ml-auto h-9.5 shrink-0">
+            <div className="flex flex-wrap items-start gap-2.5">
+                <AlatFilterPenerimaan cari={cari} dari={dari} sampai={sampai} />
+
+                {/* Tombol yang membuat dokumen sengaja di luar kartu
+                filter - lihat spec ekspor penerimaan & permintaan. */}
+                <Button asChild className="h-9.5 shrink-0">
                     <Link href="/penerimaan/baru">
                         <Plus />
                         <span className="hidden sm:inline">
@@ -48,8 +51,8 @@ export function DaftarPenerimaan({
 
             {baris.length === 0 ? (
                 <p className="rounded-xl border border-border bg-card px-5 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
-                    {cari
-                        ? `Tidak ada penerimaan yang cocok dengan “${cari}”.`
+                    {cari || dari || sampai
+                        ? "Tidak ada penerimaan yang cocok dengan filter yang dipilih."
                         : "Belum ada penerimaan yang tercatat. Catat yang pertama lewat tombol di atas."}
                 </p>
             ) : (

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import {
     DaftarPermintaanMasuk,
     type BarisPermintaanMasuk,
+    type StatusRiwayat,
     type Tampilan,
 } from "./daftar-permintaan-masuk";
 
@@ -26,9 +27,18 @@ const KOLOM = `id, nomor, status, keperluan, tanggal_dibutuhkan, tanggal, diajuk
      permintaan_item ( id )`;
 
 /** `hal` dihilangkan di halaman pertama supaya alamatnya tetap bersih. */
-const alamatRiwayat = (cari: string, halaman = 1): string => {
+const alamatRiwayat = (
+    cari: string,
+    halaman = 1,
+    dari = "",
+    sampai = "",
+    status = "",
+): string => {
     const parameter = new URLSearchParams({ lihat: "riwayat" });
     if (cari) parameter.set("cari", cari);
+    if (dari) parameter.set("dari", dari);
+    if (sampai) parameter.set("sampai", sampai);
+    if (status) parameter.set("status", status);
     if (halaman > 1) parameter.set("hal", String(halaman));
     return `/permintaan-masuk?${parameter.toString()}`;
 };
@@ -36,19 +46,33 @@ const alamatRiwayat = (cari: string, halaman = 1): string => {
 const tampilanDari = (nilai: string | undefined): Tampilan =>
     nilai === "serahkan" || nilai === "riwayat" ? nilai : "siapkan";
 
+const statusDari = (nilai: string | undefined): StatusRiwayat =>
+    nilai === "selesai" || nilai === "ditolak" ? nilai : "";
+
 export default async function PermintaanMasukPage({
     searchParams,
 }: {
-    searchParams: Promise<{ lihat?: string; cari?: string; hal?: string }>;
+    searchParams: Promise<{
+        lihat?: string;
+        cari?: string;
+        dari?: string;
+        sampai?: string;
+        status?: string;
+        hal?: string;
+    }>;
 }) {
     await pastikanPengurus();
 
     const parameter = await searchParams;
     const tampilan = tampilanDari(parameter.lihat);
     const riwayat = tampilan === "riwayat";
-    // Kata kunci dan halaman hanya berlaku di Riwayat; kedua antrean tidak
-    // dicari dan tidak dipaginasi - keduanya memang untuk dihabiskan.
+    // Kata kunci, rentang tanggal, status, dan halaman hanya berlaku di
+    // Riwayat; kedua antrean tidak dicari dan tidak dipaginasi - keduanya
+    // memang untuk dihabiskan.
     const cari = riwayat ? (parameter.cari ?? "").trim() : "";
+    const dariTanggal = riwayat ? (parameter.dari ?? "").trim() : "";
+    const sampaiTanggal = riwayat ? (parameter.sampai ?? "").trim() : "";
+    const statusFilter = riwayat ? statusDari(parameter.status) : "";
     const halaman = Math.max(1, Number.parseInt(parameter.hal ?? "1", 10) || 1);
     const dari = (halaman - 1) * PER_HALAMAN;
 
@@ -72,6 +96,9 @@ export default async function PermintaanMasukPage({
                 `nomor.ilike."%${kataKunci}%",keperluan.ilike."%${kataKunci}%"`,
             );
         }
+        if (dariTanggal) kueri = kueri.gte("tanggal", dariTanggal);
+        if (sampaiTanggal) kueri = kueri.lte("tanggal", sampaiTanggal);
+        if (statusFilter) kueri = kueri.eq("status", statusFilter);
     } else if (tampilan === "serahkan") {
         kueri = kueri.eq("status", "siap_diambil");
     } else {
@@ -95,7 +122,9 @@ export default async function PermintaanMasukPage({
     // bukan dengan daftar kosong - tautan lama atau halaman yang baru saja
     // menyusut karena kata kunci berganti.
     if (daftar.error?.code === "PGRST103" && halaman > 1) {
-        redirect(alamatRiwayat(cari));
+        redirect(
+            alamatRiwayat(cari, 1, dariTanggal, sampaiTanggal, statusFilter),
+        );
     }
 
     if (daftar.error) {
@@ -121,6 +150,9 @@ export default async function PermintaanMasukPage({
                 baris={(daftar.data ?? []) as unknown as BarisPermintaanMasuk[]}
                 tampilan={tampilan}
                 cari={cari}
+                dari={dariTanggal}
+                sampai={sampaiTanggal}
+                status={statusFilter}
             />
 
             {riwayat && total > 0 && (
@@ -131,7 +163,15 @@ export default async function PermintaanMasukPage({
                     ditampilkan={daftar.data?.length ?? 0}
                     total={total}
                     satuan="permintaan"
-                    href={(h) => alamatRiwayat(cari, h)}
+                    href={(h) =>
+                        alamatRiwayat(
+                            cari,
+                            h,
+                            dariTanggal,
+                            sampaiTanggal,
+                            statusFilter,
+                        )
+                    }
                 />
             )}
         </div>

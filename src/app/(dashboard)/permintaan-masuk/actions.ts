@@ -1,9 +1,17 @@
 "use server";
 
-import { pastikanPengurus, type HasilAksi } from "@/lib/aksi";
-import { pesanGalatPermintaan } from "@/lib/permintaan";
+import { pastikanPengurus, siapkanKataKunci, type HasilAksi } from "@/lib/aksi";
+import { keAoaEkspor, namaBerkasEkspor, type HasilEkspor, type KolomEkspor } from "@/lib/ekspor";
+import {
+    barisEksporPermintaan,
+    pesanGalatPermintaan,
+    tanggalHariIni,
+    type BarisEksporPermintaan,
+    type PermintaanUntukEkspor,
+} from "@/lib/permintaan";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import * as XLSX from "xlsx";
 
 const JALUR_DAFTAR = "/permintaan-masuk";
 const JALUR_STOK = "/stok";
@@ -70,4 +78,96 @@ export async function serahkanPermintaanMasuk(id: string): Promise<HasilAksi> {
 
     segarkan(id);
     return { ok: true };
+}
+
+const KOLOM_EKSPOR_PERMINTAAN: KolomEkspor<BarisEksporPermintaan>[] = [
+    { header: "Nomor", nilai: (b) => b.nomor },
+    { header: "Tanggal Permintaan", nilai: (b) => b.tanggalPermintaan },
+    { header: "Tanggal Diajukan", nilai: (b) => b.tanggalDiajukan },
+    { header: "Status", nilai: (b) => b.status },
+    { header: "Alasan Tolak", nilai: (b) => b.alasanTolak },
+    { header: "Pemohon", nilai: (b) => b.pemohon },
+    { header: "Unit Kerja", nilai: (b) => b.unitKerja },
+    { header: "Keperluan", nilai: (b) => b.keperluan },
+    { header: "Kode", nilai: (b) => b.kode },
+    { header: "Nama Barang", nilai: (b) => b.namaBarang },
+    { header: "Satuan", nilai: (b) => b.satuan },
+    { header: "Jumlah Diminta", nilai: (b) => b.jumlahDiminta },
+];
+
+const GALAT_EKSPOR =
+    "Data gagal diambil untuk diekspor. Coba lagi sebentar lagi.";
+
+/**
+ * Menjalankan ulang kueri Riwayat tanpa `.range()` supaya seluruh baris
+ * yang cocok ikut, bukan cuma 25 yang tampil di peramban. Petunjuk FK pada
+ * pemohon dan batasan disetujui_at is not null dipertahankan sama seperti
+ * kueri daftar - status hanya boleh mempersempit Riwayat, tidak pernah
+ * melebarkannya.
+ */
+export async function eksporRiwayatPermintaan(
+    cari: string,
+    dari: string,
+    sampai: string,
+    status: string,
+): Promise<HasilEkspor> {
+    await pastikanPengurus();
+
+    const supabase = await createClient();
+
+    let kueri = supabase
+        .from("permintaan")
+        .select(
+            `nomor, tanggal, diajukan_at, status, alasan_tolak, keperluan,
+             pemohon:profil!permintaan_pemohon_id_fkey ( nama_lengkap ),
+             unit_kerja ( nama ),
+             permintaan_item ( nama_barang_snapshot, satuan_snapshot, jumlah_diminta, barang ( kode ) )`,
+        )
+        .in("status", ["selesai", "ditolak"])
+        .not("disetujui_at", "is", null);
+
+    const kataKunci = siapkanKataKunci(cari.trim());
+    if (kataKunci) {
+        kueri = kueri.or(
+            `nomor.ilike."%${kataKunci}%",keperluan.ilike."%${kataKunci}%"`,
+        );
+    }
+    if (dari) kueri = kueri.gte("tanggal", dari);
+    if (sampai) kueri = kueri.lte("tanggal", sampai);
+    if (status === "selesai" || status === "ditolak") {
+        kueri = kueri.eq("status", status);
+    }
+
+    const { data, error } = await kueri
+        .order("tanggal", { ascending: false })
+        .order("diajukan_at", { ascending: false });
+
+    if (error) {
+        console.error("[permintaan-masuk] ekspor", error.code, error.message);
+        return { ok: false, galat: GALAT_EKSPOR };
+    }
+
+    const baris = barisEksporPermintaan(
+        (data ?? []) as unknown as PermintaanUntukEkspor[],
+    );
+    const aoa = keAoaEkspor(baris, KOLOM_EKSPOR_PERMINTAAN);
+    const sheet = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, "Permintaan");
+    const base64 = XLSX.write(wb, {
+        type: "base64",
+        bookType: "xlsx",
+    }) as string;
+
+    return {
+        ok: true,
+        base64,
+        namaBerkas: namaBerkasEkspor({
+            prefix: "permintaan",
+            status: status || undefined,
+            dari,
+            sampai,
+            hariIni: tanggalHariIni(),
+        }),
+    };
 }

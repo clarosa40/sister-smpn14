@@ -1,16 +1,21 @@
 "use server";
 
-import { pastikanPengurus, teks, type HasilAksi } from "@/lib/aksi";
+import { pastikanPengurus, siapkanKataKunci, teks, type HasilAksi } from "@/lib/aksi";
+import { keAoaEkspor, namaBerkasEkspor, type HasilEkspor, type KolomEkspor } from "@/lib/ekspor";
 import {
     MAKS_JUMLAH,
     PANJANG_CATATAN,
     PANJANG_NO_DOKUMEN,
+    barisEksporPenerimaan,
     pesanGalatPenerimaan,
+    type BarisEksporPenerimaan,
+    type PenerimaanUntukEkspor,
 } from "@/lib/penerimaan";
 import { tanggalHariIni } from "@/lib/permintaan";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import * as XLSX from "xlsx";
 
 const JALUR_DAFTAR = "/penerimaan";
 const JALUR_STOK = "/stok";
@@ -168,4 +173,80 @@ export async function catatPenerimaan(
     revalidatePath(JALUR_STOK);
     revalidatePath(JALUR_BERANDA);
     redirect(`${JALUR_DAFTAR}/${kepala.id}`);
+}
+
+const KOLOM_EKSPOR_PENERIMAAN: KolomEkspor<BarisEksporPenerimaan>[] = [
+    { header: "Nomor", nilai: (b) => b.nomor },
+    { header: "Tanggal", nilai: (b) => b.tanggal },
+    { header: "No Dokumen", nilai: (b) => b.noDokumen },
+    { header: "Kode", nilai: (b) => b.kode },
+    { header: "Nama Barang", nilai: (b) => b.namaBarang },
+    { header: "Satuan", nilai: (b) => b.satuan },
+    { header: "Jumlah", nilai: (b) => b.jumlah },
+    { header: "Harga Satuan", nilai: (b) => b.hargaSatuan },
+    { header: "Total", nilai: (b) => b.total },
+];
+
+const GALAT_EKSPOR =
+    "Data gagal diambil untuk diekspor. Coba lagi sebentar lagi.";
+
+/**
+ * Menjalankan ulang kueri daftar tanpa `.range()` supaya seluruh baris yang
+ * cocok ikut, bukan cuma 25 yang tampil di peramban - lihat spec ekspor
+ * penerimaan & permintaan untuk kenapa /stok tidak jadi contohnya di sini.
+ */
+export async function eksporPenerimaan(
+    cari: string,
+    dari: string,
+    sampai: string,
+): Promise<HasilEkspor> {
+    await pastikanPengurus();
+
+    const supabase = await createClient();
+
+    let kueri = supabase.from("penerimaan").select(
+        `nomor, tanggal, no_dokumen,
+         penerimaan_item ( nama_barang_snapshot, satuan_snapshot, jumlah, harga_satuan, barang ( kode ) )`,
+    );
+
+    const kataKunci = siapkanKataKunci(cari.trim());
+    if (kataKunci) {
+        kueri = kueri.or(
+            `nomor.ilike."%${kataKunci}%",no_dokumen.ilike."%${kataKunci}%"`,
+        );
+    }
+    if (dari) kueri = kueri.gte("tanggal", dari);
+    if (sampai) kueri = kueri.lte("tanggal", sampai);
+
+    const { data, error } = await kueri.order("created_at", {
+        ascending: false,
+    });
+
+    if (error) {
+        console.error("[penerimaan] ekspor", error.code, error.message);
+        return { ok: false, galat: GALAT_EKSPOR };
+    }
+
+    const baris = barisEksporPenerimaan(
+        (data ?? []) as unknown as PenerimaanUntukEkspor[],
+    );
+    const aoa = keAoaEkspor(baris, KOLOM_EKSPOR_PENERIMAAN);
+    const sheet = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, "Penerimaan");
+    const base64 = XLSX.write(wb, {
+        type: "base64",
+        bookType: "xlsx",
+    }) as string;
+
+    return {
+        ok: true,
+        base64,
+        namaBerkas: namaBerkasEkspor({
+            prefix: "penerimaan",
+            dari,
+            sampai,
+            hariIni: tanggalHariIni(),
+        }),
+    };
 }

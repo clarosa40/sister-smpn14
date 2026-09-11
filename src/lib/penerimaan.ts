@@ -36,3 +36,63 @@ export function pesanGalatPenerimaan(galat: PostgrestError): string {
             return GALAT_UMUM;
     }
 }
+
+/** Baris query penerimaan berikut item bersarangnya, seperlunya untuk ekspor. */
+export type PenerimaanUntukEkspor = {
+    nomor: string;
+    tanggal: string;
+    no_dokumen: string | null;
+    penerimaan_item: {
+        nama_barang_snapshot: string;
+        satuan_snapshot: string;
+        jumlah: number;
+        harga_satuan: number | null;
+        barang: { kode: string } | null;
+    }[];
+};
+
+export type BarisEksporPenerimaan = {
+    nomor: string;
+    tanggal: string;
+    noDokumen: string;
+    kode: string;
+    namaBarang: string;
+    satuan: string;
+    jumlah: number;
+    hargaSatuan: number | "";
+    total: number | "";
+};
+
+/**
+ * Satu dokumen jadi satu baris per penerimaan_item, kepala dokumennya
+ * diulang di tiap baris. Kode datang dari join ke barang (tidak pernah
+ * disnapshot), sedangkan Nama Barang dan Satuan datang dari kolom snapshot
+ * - kebenaran dokumen pada saat barang tiba, bukan master hari ini. Total
+ * dan Harga Satuan kosong, bukan nol, saat harga_satuan belum diketahui.
+ */
+export function barisEksporPenerimaan(
+    dokumen: PenerimaanUntukEkspor[],
+): BarisEksporPenerimaan[] {
+    const baris: BarisEksporPenerimaan[] = [];
+
+    for (const d of dokumen) {
+        for (const item of d.penerimaan_item) {
+            baris.push({
+                nomor: d.nomor,
+                tanggal: d.tanggal,
+                noDokumen: d.no_dokumen ?? "",
+                kode: item.barang?.kode ?? "",
+                namaBarang: item.nama_barang_snapshot,
+                satuan: item.satuan_snapshot,
+                jumlah: item.jumlah,
+                hargaSatuan: item.harga_satuan ?? "",
+                total:
+                    item.harga_satuan === null
+                        ? ""
+                        : item.jumlah * item.harga_satuan,
+            });
+        }
+    }
+
+    return baris;
+}
