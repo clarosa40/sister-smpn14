@@ -60,7 +60,6 @@ const daftarKolom = kolom.columns([
     }),
     kolom.accessor("satuan", {
         header: "Satuan",
-        enableSorting: false,
         cell: (info) => (
             <span className="text-[13px] text-muted-foreground">
                 {info.getValue()}
@@ -77,7 +76,6 @@ const daftarKolom = kolom.columns([
     }),
     kolom.accessor("status", {
         header: "Status",
-        enableSorting: false,
         cell: (info) => <StatusStok status={info.getValue()} />,
     }),
 ]);
