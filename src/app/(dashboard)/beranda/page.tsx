@@ -164,8 +164,10 @@ async function ringkasanTataUsaha() {
 /**
  * Barang Kosong dan Siap Disiapkan sama-sama count(head: true) atas
  * tabel yang sudah difilter tepat seperti antrean sungguhannya - angka
- * di beranda karena itu selalu sama dengan panjang /stok?kosong=1 dan
- * antrean Siapkan di /permintaan-masuk. Penerimaan Bulan Ini dibatasi
+ * di beranda karena itu selalu sama dengan jumlah baris berstatus kosong
+ * di /stok (filternya kini di peramban, lewat TanStack Table, bukan lagi
+ * lewat parameter URL) dan antrean Siapkan di /permintaan-masuk.
+ * Penerimaan Bulan Ini dibatasi
  * lewat tanggalHariIni(), bukan getMonth(): kolom penerimaan.tanggal
  * adalah tanggal Jakarta yang diketik operator, dan zona waktu server
  * bukan zona waktu sekolah.
@@ -262,10 +264,11 @@ export default async function BerandaPage() {
                     // Barang Kosong adalah titik awal, bukan sekadar trivia:
                     // baris pertama tiap peran menautkannya kalau ada tujuan
                     // yang jelas - satu-satunya sejauh ini adalah tile ini,
-                    // milik pengurus barang.
+                    // milik pengurus barang. Tanpa ?kosong=1: filternya kini
+                    // di peramban lewat TanStack Table, bukan parameter URL.
                     const href =
                         user.role === "pengurus_barang" && i === 0
-                            ? "/stok?kosong=1"
+                            ? "/stok"
                             : null;
 
                     return (
