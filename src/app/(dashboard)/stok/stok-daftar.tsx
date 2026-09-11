@@ -18,7 +18,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { keAoaEkspor, type KolomEkspor } from "@/lib/stok-ekspor";
+import { keAoaEkspor, type KolomEkspor } from "@/lib/ekspor";
 import { cocokPilihan, cocokTeks, dalamRentangStok } from "@/lib/stok-filter";
 import { cn } from "@/lib/utils";
 import {

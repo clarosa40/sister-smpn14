@@ -1,6 +1,7 @@
 /**
- * Fungsi murni di balik ekspor Excel /stok - dipisah dari komponennya
- * supaya bisa diuji tanpa DOM atau instance TanStack Table / xlsx.
+ * Fungsi murni di balik ekspor Excel /stok, /penerimaan, dan
+ * /permintaan-masuk - dipisah dari komponennya supaya bisa diuji tanpa DOM
+ * atau instance TanStack Table / xlsx.
  */
 
 export type KolomEkspor<T> = {

@@ -13,7 +13,7 @@
     "test:alamat": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/alamat.test.mjs",
     "test:permintaan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/permintaan.test.mjs",
     "test:stok-filter": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/stok-filter.test.mjs",
-    "test:stok-ekspor": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/stok-ekspor.test.mjs"
+    "test:ekspor": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/ekspor.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

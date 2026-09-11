@@ -1,8 +1,8 @@
 // Dijalankan tanpa build: Node 24 melepas anotasi tipe sendiri.
 //
-//   npm run test:stok-ekspor
+//   npm run test:ekspor
 
-import { keAoaEkspor } from "./stok-ekspor.ts";
+import { keAoaEkspor } from "./ekspor.ts";
 
 let lolos = 0;
 let gagal = 0;
