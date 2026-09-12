@@ -71,7 +71,7 @@ export function LoginForm({ nonaktif = false }: { nonaktif?: boolean }) {
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
-                    placeholder="guru.ipa"
+                    placeholder="username"
                     required
                     autoFocus
                 />

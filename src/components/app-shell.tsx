@@ -1,12 +1,12 @@
 "use client";
 
-import { BrandMark } from "@/components/brand-mark";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { LABEL_PERAN, navUntukPeran } from "@/config/nav-items";
 import type { User } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { LogOut, Menu, X } from "lucide-react";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
@@ -118,12 +118,24 @@ function IsiSidebar({ user, onTutup }: { user: User; onTutup?: () => void }) {
     return (
         <>
             <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
-                <BrandMark className="size-8" />
+                {/* Tingginya disamakan dengan blok teks di sebelahnya, dan
+                    lebarnya dibiarkan mengikuti - perisainya lebih jangkung
+                    daripada lebar, jadi bingkai bujur sangkar membuatnya
+                    gepeng. */}
+                <Image
+                    src="/logo-smpn14.png"
+                    alt=""
+                    width={373}
+                    height={440}
+                    className="h-8 w-auto shrink-0"
+                />
                 <div className="min-w-0">
                     <p className="text-[15px] leading-tight font-bold tracking-[-0.2px] text-sidebar-foreground">
                         SIPB
                     </p>
-                    <p className="text-[11px] text-muted-foreground">SMPN 14</p>
+                    <p className="text-[11px] text-muted-foreground">
+                        SMP Negeri 14 Jakarta
+                    </p>
                 </div>
                 {onTutup && (
                     <button
@@ -137,10 +149,7 @@ function IsiSidebar({ user, onTutup }: { user: User; onTutup?: () => void }) {
                 )}
             </div>
 
-            <div
-                aria-hidden
-                className="mx-4 mb-3 h-px bg-sidebar-border"
-            />
+            <div aria-hidden className="mx-4 mb-3 h-px bg-sidebar-border" />
 
             <SidebarNav
                 role={user.role}

@@ -1,4 +1,4 @@
-import { BrandMark } from "@/components/brand-mark";
+import Image from "next/image";
 
 export default function AuthLayout({
     children,
@@ -16,19 +16,27 @@ export default function AuthLayout({
                 layar pendek kartunya tetap utuh dan halaman ikut menggulir,
                 dengan footer tetap di bawahnya - bukan menimpanya. */}
             <main className="my-auto w-full max-w-[400px] rounded-xl border border-border bg-card p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] sm:p-9">
-                <header className="mb-7 flex flex-col items-center gap-1">
-                    <BrandMark
-                        className="mb-3 size-13 rounded-[13px]"
-                        iconClassName="size-6.5"
+                <header className="mb-7 flex flex-col items-center">
+                    {/* Lambang sekolah jadi satu-satunya bidang berwarna penuh
+                        di atas garis pemisah; hijau aksen baru muncul lagi di
+                        tombol, jauh di bawahnya - jadi dua cerita warna itu
+                        tidak pernah bersebelahan. Ukurannya dikunci lewat
+                        tinggi saja: perisainya lebih jangkung daripada lebar
+                        (0,85), dan memaksanya jadi bujur sangkar membuatnya
+                        gepeng. */}
+                    <Image
+                        src="/logo-smpn14.png"
+                        alt="Lambang SMP Negeri 14 Jakarta"
+                        width={373}
+                        height={440}
+                        priority
+                        className="h-26 w-auto"
                     />
-                    <p className="text-2xl font-bold tracking-[-0.3px] text-foreground">
+                    <p className="mt-4 text-[22px] font-bold tracking-[-0.3px] text-foreground">
                         SIPB
                     </p>
-                    <p className="text-center text-[13px] leading-normal text-muted-foreground">
+                    <p className="mt-1 text-center text-[13px] leading-normal text-muted-foreground">
                         Sistem Informasi Permintaan Barang
-                    </p>
-                    <p className="mt-0.5 text-[13px] font-semibold text-primary">
-                        SMPN 14
                     </p>
                 </header>
 
@@ -38,7 +46,7 @@ export default function AuthLayout({
             </main>
 
             <footer className="pt-8 text-xs text-muted-foreground/70">
-                &copy; 2026 SMPN 14
+                &copy; 2026 SMP Negeri 14 Jakarta
             </footer>
         </div>
     );
