@@ -14,7 +14,9 @@
     "test:permintaan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/permintaan.test.mjs",
     "test:penerimaan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/penerimaan.test.mjs",
     "test:stok-filter": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/stok-filter.test.mjs",
-    "test:ekspor": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/ekspor.test.mjs"
+    "test:ekspor": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/ekspor.test.mjs",
+    "test:impor": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/impor-pegawai.test.mjs",
+    "impor:pegawai": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/impor-pegawai.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

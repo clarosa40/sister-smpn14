@@ -43,3 +43,10 @@ next-env.d.ts
 # claude code local settings
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# impor pegawai - nama asli dan sandi sementara seluruh sekolah.
+# Berkas Excel sumbernya dan CSV sandi yang dihasilkan keduanya
+# tidak pernah boleh masuk git.
+/impor/*
+!/impor/README.md
+sandi-sementara.csv
