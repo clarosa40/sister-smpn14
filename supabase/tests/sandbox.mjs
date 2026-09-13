@@ -95,7 +95,7 @@ ${tebal('Perintah')}
 ${tebal('Selain itu, ketik SQL apa saja.')} ${abu('Akhiri dengan ; atau langsung Enter.')}
 
 ${tebal('Contoh alur lengkap')} ${abu('(jalankan berurutan, ganti akun sesuai baris)')}
-  \\siapa sarpras
+  \\siapa tu
   insert into penerimaan (sumber_dana, no_dokumen) values ('BOS Reguler 2026', 'INV-01');
   insert into penerimaan_item (penerimaan_id, barang_id, jumlah)
     select p.id, b.id, 50 from penerimaan p, barang b where b.nama = 'Spidol whiteboard hitam';
@@ -108,17 +108,17 @@ ${tebal('Contoh alur lengkap')} ${abu('(jalankan berurutan, ganti akun sesuai ba
     select p.id, b.id, 5 from permintaan p, barang b where b.nama = 'Spidol whiteboard hitam';
   update permintaan set status = 'diajukan';
 
-  \\siapa tu
+  \\siapa sarpras
   update permintaan set status = 'disetujui' where nomor = 'SPB-000001';
 
-  \\siapa sarpras
+  \\siapa tu
   select (siapkan_permintaan((select id from permintaan where nomor = 'SPB-000001'))).status;
   update permintaan set status = 'selesai' where nomor = 'SPB-000001';
   \\log SPB-000001
 `;
 
 const ALUR = `
-        ${tebal('pegawai')}          ${tebal('tata usaha')}        ${tebal('pengurus barang')}
+        ${tebal('pegawai')}        ${tebal('pengurus barang')}         ${tebal('tata usaha')}
    ┌─────────┐   ┌──────────┐   ┌───────────┐   ┌──────────────┐   ┌─────────┐
    │  draft  │──▶│ diajukan │──▶│ disetujui │──▶│ siap_diambil │──▶│ selesai │
    └─────────┘   └──────────┘   └───────────┘   └──────────────┘   └─────────┘
@@ -130,7 +130,7 @@ const ALUR = `
                ┌─────────────┐  ┌──────────┐         -> semua batal
                │ dibatalkan  │  │ ditolak  │◀────────┘
                └─────────────┘  └──────────┘
-                  (pemohon)      (tata usaha, alasan wajib)
+                  (pemohon)      (pengurus barang, alasan wajib)
 `;
 
 async function jalankan(sql) {

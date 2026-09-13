@@ -1,4 +1,4 @@
-import { pastikanPengurus } from "@/lib/aksi";
+import { pastikanStaf } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { StokDaftar, type BarisStok } from "./stok-daftar";
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default async function StokPage() {
-    await pastikanPengurus();
+    await pastikanStaf();
 
     const supabase = await createClient();
 

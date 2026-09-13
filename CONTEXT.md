@@ -1,7 +1,7 @@
 # SIPB SMPN 14
 
 Sistem Permintaan Barang: a school stockroom system where staff request
-consumable supplies, an administrator approves them, and a storekeeper
+consumable supplies, a storekeeper approves them, and an administrator
 fulfils them. One school, one stockroom, three roles.
 
 Prose in this repo is English; identifiers, UI copy, and the terms below are
@@ -18,13 +18,15 @@ account gets.
 _Avoid_: user, requester, employee (as a role name)
 
 **Pengurus Barang**:
-The storekeeper. The only role that moves physical stock — receiving goods,
-preparing requests, handing them over, correcting counts. Known in the school
-as sarpras.
-_Avoid_: sarpras (in code), warehouse staff, admin gudang
+The school's appointed asset officer. Approves or refuses every permintaan, and
+reads stok in order to judge them — but moves nothing. The authority is a
+signature, not a pair of hands. Known in the school as sarpras.
+_Avoid_: sarpras (in code), approver, warehouse staff, admin gudang
 
 **Tata Usaha**:
-School administration. Approves or refuses requests and owns all master data.
+School administration. Owns all master data — barang, unit kerja, profil — and
+performs every physical act in the stockroom: receiving goods, preparing
+requests, handing them over, correcting counts. The only role that moves stok.
 _Avoid_: admin, TU (in code)
 
 **Unit Kerja**:
@@ -157,19 +159,19 @@ partial fulfilment and therefore no quantity for an operator to type.
 _Avoid_: all-or-nothing (in UI copy), partial fulfilment
 
 **Siapkan**:
-The pengurus barang collecting a permintaan's barang and taking them out of
-stok. The act that writes the outgoing mutasi.
+The tata usaha collecting a permintaan's barang and taking them out of stok.
+The act that writes the outgoing mutasi.
 _Avoid_: proses, fulfil, pick
 
 **Serahkan**:
-The pengurus barang handing prepared goods to the requester. Moves nothing in
-the ledger — the stok already left at siapkan.
+The tata usaha handing prepared goods to the requester. Moves nothing in the
+ledger — the stok already left at siapkan.
 _Avoid_: kirim, deliver, release
 
 **Alasan Tolak**:
-The tata usaha's written reason for refusing a permintaan. A refusal can never
-be reasonless, and the reason can only be written in the same breath as the
-refusal.
+The pengurus barang's written reason for refusing a permintaan. A refusal can
+never be reasonless, and the reason can only be written in the same breath as
+the refusal.
 _Avoid_: catatan penolakan, rejection note
 
 **Antrean**:

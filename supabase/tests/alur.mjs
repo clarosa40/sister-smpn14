@@ -115,16 +115,16 @@ const pel = await cariBarang(PEL);
 const pulpen = await cariBarang(PULPEN);
 
 console.log("\n— barang masuk —");
-await as(TU, async () => {
+await as(PGR, async () => {
     await expectError(
-        "tata usaha tidak boleh mencatat penerimaan",
+        "pengurus barang tidak boleh mencatat penerimaan",
         () => db.query(`select public.catat_penerimaan(gen_random_uuid())`),
-        "pengurus barang",
+        "tata usaha",
     );
 });
 
 let penerimaanId;
-await as(PGR, async () => {
+await as(TU, async () => {
     await db.exec(`
     insert into public.penerimaan (no_dokumen)
     values ('INV-8841');
@@ -146,7 +146,7 @@ await as(PGR, async () => {
     );
     ok(
         "dibuat_oleh penerimaan terisi sendiri dari auth.uid()",
-        p.dibuat_oleh === PGR,
+        p.dibuat_oleh === TU,
         `(${p.dibuat_oleh})`,
     );
 
@@ -190,7 +190,7 @@ await as(PGR, async () => {
 });
 
 console.log("\n— penerimaan tercatat beku —");
-await as(PGR, async () => {
+await as(TU, async () => {
     await expectError(
         "kepala penerimaan yang sudah tercatat tidak bisa diubah",
         () =>
@@ -281,7 +281,7 @@ await as(PGR, async () => {
     // diam-diam) - satu-satunya pintu yang tersisa sekarang adalah
     // ketiga fungsi SECURITY DEFINER.
     await expectError(
-        "pengurus barang tidak lagi bisa menulis mutasi langsung lewat API",
+        "tata usaha tidak lagi bisa menulis mutasi langsung lewat API",
         () =>
             db.query(
                 `insert into public.mutasi_stok (barang_id, jenis, jumlah, catatan)
@@ -415,7 +415,7 @@ await as(PGW, async () => {
             db.exec(
                 `update public.permintaan set status = 'disetujui' where id = '${permA}'`,
             ),
-        "tata usaha",
+        "pengurus barang",
     );
 
     await expectError(
@@ -428,15 +428,15 @@ await as(PGW, async () => {
     );
 });
 
-console.log("\n— persetujuan tata usaha —");
-await as(PGR, async () => {
+console.log("\n— persetujuan pengurus barang —");
+await as(TU, async () => {
     await expectError(
-        "pengurus barang tidak boleh menyetujui",
+        "tata usaha tidak boleh menyetujui",
         () =>
             db.exec(
                 `update public.permintaan set status = 'disetujui' where id = '${permA}'`,
             ),
-        "tata usaha",
+        "pengurus barang",
     );
 
     await expectError(
@@ -446,7 +446,7 @@ await as(PGR, async () => {
     );
 });
 
-await as(TU, async () => {
+await as(PGR, async () => {
     await expectError(
         "penolakan wajib menyertakan alasan",
         () =>
@@ -465,21 +465,21 @@ await as(TU, async () => {
         )
     ).rows[0];
     ok(
-        "tata usaha menyetujui — jejaknya tercatat",
+        "pengurus barang menyetujui — jejaknya tercatat",
         p.status === "disetujui" &&
             p.disetujui_at !== null &&
-            p.disetujui_oleh === TU,
+            p.disetujui_oleh === PGR,
     );
 
     await expectError(
-        "tata usaha tidak boleh menyiapkan barang",
+        "pengurus barang tidak boleh menyiapkan barang",
         () => db.query(`select public.siapkan_permintaan($1)`, [permA]),
-        "pengurus barang",
+        "tata usaha",
     );
 });
 
 console.log("\n— penyiapan barang (all-or-nothing) —");
-await as(PGR, async () => {
+await as(TU, async () => {
     const r = await db.query(
         `select (public.siapkan_permintaan($1)).status as status`,
         [permA],
@@ -564,18 +564,18 @@ await as(PGR, async () => {
 });
 
 console.log("\n— penyerahan barang —");
-await as(TU, async () => {
+await as(PGR, async () => {
     await expectError(
-        "tata usaha tidak boleh menyerahkan barang",
+        "pengurus barang tidak boleh menyerahkan barang",
         () =>
             db.exec(
                 `update public.permintaan set status = 'selesai' where id = '${permA}'`,
             ),
-        "pengurus barang",
+        "tata usaha",
     );
 });
 
-await as(PGR, async () => {
+await as(TU, async () => {
     await db.exec(
         `update public.permintaan set status = 'selesai' where id = '${permA}'`,
     );
@@ -585,10 +585,10 @@ await as(PGR, async () => {
         )
     ).rows[0];
     ok(
-        "pengurus barang menyerahkan — jejaknya tercatat",
+        "tata usaha menyerahkan — jejaknya tercatat",
         p.status === "selesai" &&
             p.selesai_at !== null &&
-            p.diserahkan_oleh === PGR,
+            p.diserahkan_oleh === TU,
     );
 
     const log = (
@@ -614,7 +614,7 @@ await as(PGR, async () => {
 });
 
 console.log("\n— penolakan dan pembatalan —");
-await as(TU, async () => {
+await as(PGR, async () => {
     await db.exec(`update public.permintaan set status = 'ditolak',
     alasan_tolak = 'Kertas HVS habis, diusulkan masuk pengadaan triwulan depan'
     where id = '${permB}'`);
@@ -624,7 +624,7 @@ await as(TU, async () => {
         )
     ).rows[0];
     ok(
-        "tata usaha menolak permintaan yang stoknya tak kunjung ada",
+        "pengurus barang menolak permintaan yang stoknya tak kunjung ada",
         p.status === "ditolak",
     );
 
@@ -677,18 +677,18 @@ await as(PGW, async () => {
 });
 
 console.log("\n— penyesuaian hasil hitung fisik —");
-await as(TU, async () => {
+await as(PGR, async () => {
     await expectError(
-        "tata usaha tidak boleh mencatat penyesuaian",
+        "pengurus barang tidak boleh mencatat penyesuaian",
         () =>
             db.query(`select public.catat_penyesuaian($1, 40, 'coba-coba')`, [
                 spidol,
             ]),
-        "pengurus barang",
+        "tata usaha",
     );
 });
 
-await as(PGR, async () => {
+await as(TU, async () => {
     const sebelum = (
         await db.query(`select stok from public.stok_barang where nama = $1`, [
             SPIDOL,
@@ -758,7 +758,7 @@ await as(PGR, async () => {
             await db.query(
                 `select count(*)::int as n from public.mutasi_stok
                      where jenis = 'penyesuaian' and dibuat_oleh = $1`,
-                [PGR],
+                [TU],
             )
         ).rows[0].n === 2,
     );
@@ -1210,7 +1210,7 @@ update public.profil set
 // satu untuk keranjang, satu lagi untuk membuktikan bahwa keranjang yang
 // sudah diajukan tidak bisa ditambah. Tanpa itu, penolakan RLS akan
 // tertutup lebih dulu oleh penolakan "barang kosong" dari trigger.
-await as(PGR, async () => {
+await as(TU, async () => {
     await db.exec(`
     insert into public.penerimaan (no_dokumen) values ('INV-9002');
     insert into public.penerimaan_item (penerimaan_id, barang_id, jumlah)
@@ -1404,7 +1404,7 @@ await as(PGW, async () => {
     );
 });
 
-await as(TU, async () => {
+await as(PGR, async () => {
     await db.query(
         `update public.permintaan set status = 'disetujui' where id = '${permE}'`,
     );
@@ -1483,9 +1483,9 @@ await as(PGW2, async () => {
 });
 
 // Bagian terakhir, seperti dua bagian sebelumnya: di sini permintaan
-// baru terbit lalu diputuskan tata usaha - keduanya hal yang dihitung
+// baru terbit lalu diputuskan pengurus barang - keduanya hal yang dihitung
 // persis oleh pemeriksaan di bagian pengguna di atas.
-console.log("\n— persetujuan tata usaha —");
+console.log("\n— persetujuan pengurus barang —");
 
 /**
  * Keranjang berisi satu barang, lalu diajukan - persis jalur yang
@@ -1629,22 +1629,22 @@ await as(PGW, async () => {
             db.query(
                 `update public.permintaan set status = 'disetujui' where id = '${permF}'`,
             ),
-        "hanya tata usaha",
-    );
-});
-
-await as(PGR, async () => {
-    await expectError(
-        "pengurus barang tidak bisa menyetujui permintaan",
-        () =>
-            db.query(
-                `update public.permintaan set status = 'disetujui' where id = '${permF}'`,
-            ),
-        "hanya tata usaha",
+        "hanya pengurus barang",
     );
 });
 
 await as(TU, async () => {
+    await expectError(
+        "tata usaha tidak bisa menyetujui permintaan",
+        () =>
+            db.query(
+                `update public.permintaan set status = 'disetujui' where id = '${permF}'`,
+            ),
+        "hanya pengurus barang",
+    );
+});
+
+await as(PGR, async () => {
     await db.query(
         `update public.permintaan set status = 'disetujui' where id = '${permF}'`,
     );
@@ -1655,10 +1655,10 @@ await as(TU, async () => {
         )
     ).rows[0];
     ok(
-        "tata usaha menyetujui - stempel waktu dan namanya terisi sendiri",
+        "pengurus barang menyetujui - stempel waktu dan namanya terisi sendiri",
         p.status === "disetujui" &&
             p.disetujui_at !== null &&
-            p.disetujui_oleh === TU,
+            p.disetujui_oleh === PGR,
         JSON.stringify(p),
     );
 
@@ -1670,8 +1670,8 @@ await as(TU, async () => {
         )
     ).rows;
     ok(
-        "persetujuan meninggalkan satu baris log atas nama tata usaha",
-        log.length === 1 && log[0].oleh === TU,
+        "persetujuan meninggalkan satu baris log atas nama pengurus barang",
+        log.length === 1 && log[0].oleh === PGR,
         JSON.stringify(log),
     );
 
@@ -1724,7 +1724,7 @@ await as(TU, async () => {
         )
     ).rows[0];
     ok(
-        "permintaan yang sudah disetujui masih bisa ditolak tata usaha",
+        "permintaan yang sudah disetujui masih bisa ditolak pengurus barang",
         f.status === "ditolak",
         f.status,
     );

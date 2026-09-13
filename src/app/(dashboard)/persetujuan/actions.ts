@@ -1,6 +1,6 @@
 "use server";
 
-import { pastikanTataUsaha, teks, type HasilAksi } from "@/lib/aksi";
+import { pastikanPengurus, teks, type HasilAksi } from "@/lib/aksi";
 import { PANJANG_ALASAN, pesanGalatPermintaan } from "@/lib/permintaan";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -24,7 +24,7 @@ const GALAT_PINDAH =
  * lognya ditulis catat_log_permintaan().
  */
 export async function setujuiPermintaan(id: string): Promise<HasilAksi> {
-    await pastikanTataUsaha();
+    await pastikanPengurus();
 
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -64,7 +64,7 @@ export async function tolakPermintaan(
     _sebelumnya: HasilAksi | null,
     formData: FormData,
 ): Promise<HasilAksi> {
-    await pastikanTataUsaha();
+    await pastikanPengurus();
 
     const alasan = teks(formData, "alasan_tolak");
 

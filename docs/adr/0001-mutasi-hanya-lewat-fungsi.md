@@ -33,3 +33,12 @@ Nothing outside the database can write a mutasi row, including a pengurus
 barang using the API directly. Any future kind of stock movement needs a new
 function, which is the intended cost — it forces the rule that movement obeys
 to be written down somewhere the application cannot skip.
+
+## Amendment (ADR 0006)
+
+Every mention of "pengurus barang" above should now be read as "whoever holds
+the stock-moving role", which since ADR 0006 is **tata usaha**. The prose is
+left as written because it was accurate when the decision was made and the
+decision itself is unchanged: the three functions are still the ledger's only
+doors, and `tulis_mutasi` is still revoked. Only the role that passes through
+`is_pengurus()` inside them has moved, and that check is now `is_tu()`.

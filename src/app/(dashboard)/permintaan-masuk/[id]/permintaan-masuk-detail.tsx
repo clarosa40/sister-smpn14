@@ -166,8 +166,9 @@ export function PermintaanMasukDetail({
                 <h3 className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
                     Riwayat
                 </h3>
-                {/* Disebutkan berikut namanya, sama seperti layar tata usaha:
-                    policy baca_profil membuka seluruh baris untuk is_staf(). */}
+                {/* Disebutkan berikut namanya, sama seperti layar pengurus
+                    barang: policy baca_profil membuka seluruh baris untuk
+                    is_staf(). */}
                 <ol className="divide-y divide-border">
                     {log.map((l) => (
                         <li

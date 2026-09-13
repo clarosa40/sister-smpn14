@@ -268,7 +268,7 @@ export function DetailPermintaan({
                     label="Keperluan"
                     defaultValue={permintaan.keperluan}
                     placeholder="Praktikum kelas 8 semester ganjil"
-                    petunjuk="Dibaca tata usaha saat menimbang persetujuan."
+                    petunjuk="Dibaca pengurus barang saat menimbang persetujuan."
                     required
                     autoFocus
                     maxLength={PANJANG_KEPERLUAN}

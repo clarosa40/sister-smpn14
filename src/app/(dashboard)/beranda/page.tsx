@@ -20,14 +20,14 @@ export const metadata: Metadata = {
 const RINGKASAN: Record<Role, string[]> = {
     pegawai: ["Permintaan Aktif", "Menunggu Persetujuan", "Siap Diambil"],
     tata_usaha: [
-        "Menunggu Persetujuan",
-        "Disetujui Bulan Ini",
-        "Total Pengguna",
-    ],
-    pengurus_barang: [
         "Barang Kosong",
         "Siap Disiapkan",
         "Penerimaan Bulan Ini",
+    ],
+    pengurus_barang: [
+        "Menunggu Persetujuan",
+        "Disetujui Bulan Ini",
+        "Barang Kosong",
     ],
 };
 
@@ -48,9 +48,9 @@ const WAKTU_JAKARTA = "Asia/Jakarta";
  */
 const KOSONG_AKTIVITAS: Partial<Record<Role, string>> = {
     pegawai: "Riwayat permintaan Anda muncul di sini begitu keranjang pertama dibuat.",
-    tata_usaha: "Riwayat permintaan sekolah muncul di sini begitu ada yang diajukan.",
-    pengurus_barang:
-        "Riwayat permintaan sekolah muncul di sini begitu tata usaha menyetujui yang pertama.",
+    tata_usaha:
+        "Riwayat permintaan sekolah muncul di sini begitu pengurus barang menyetujui yang pertama.",
+    pengurus_barang: "Riwayat permintaan sekolah muncul di sini begitu ada yang diajukan.",
 };
 
 type Aktivitas = {
@@ -111,7 +111,8 @@ async function ringkasanPegawai(userId: string) {
 }
 
 /**
- * Tiga angka tata usaha, tiga count(head: true) yang berjalan bersamaan.
+ * Tiga angka pengurus barang, tiga count(head: true) yang berjalan
+ * bersamaan.
  *
  * Berbeda dengan ringkasanPegawai di atas, ketiganya tidak bisa dilipat
  * jadi satu select: yang pertama menghitung status, yang kedua sebuah
@@ -122,7 +123,7 @@ async function ringkasanPegawai(userId: string) {
  * log kepada is_staf(), dan itu memang yang diinginkan di sini - ticker
  * ini tentang seluruh sekolah, bukan tentang satu orang.
  */
-async function ringkasanTataUsaha() {
+async function ringkasanPengurus() {
     const supabase = await createClient();
 
     // "2026-09" + "-01T00:00:00+07:00". Batas bulannya disusun dari tanggal
@@ -130,7 +131,7 @@ async function ringkasanTataUsaha() {
     // sekolah, dan itu pula sebabnya tanggalHariIni() ada.
     const awalBulan = `${tanggalHariIni().slice(0, 7)}-01T00:00:00+07:00`;
 
-    const [menunggu, disetujui, pengguna, aktivitas] = await Promise.all([
+    const [menunggu, disetujui, kosong, aktivitas] = await Promise.all([
         supabase
             .from("permintaan")
             .select("id", { count: "exact", head: true })
@@ -139,7 +140,10 @@ async function ringkasanTataUsaha() {
             .from("permintaan")
             .select("id", { count: "exact", head: true })
             .gte("disetujui_at", awalBulan),
-        supabase.from("profil").select("id", { count: "exact", head: true }),
+        supabase
+            .from("stok_barang")
+            .select("barang_id", { count: "exact", head: true })
+            .eq("status", "kosong"),
         supabase
             .from("permintaan_log")
             .select("id, status_ke, created_at, permintaan ( nomor )")
@@ -148,14 +152,14 @@ async function ringkasanTataUsaha() {
     ]);
 
     const galat =
-        menunggu.error ?? disetujui.error ?? pengguna.error ?? aktivitas.error;
+        menunggu.error ?? disetujui.error ?? kosong.error ?? aktivitas.error;
     if (galat) console.error("[beranda]", galat.code, galat.message);
 
     return {
         angka: [
             menunggu.error ? null : (menunggu.count ?? 0),
             disetujui.error ? null : (disetujui.count ?? 0),
-            pengguna.error ? null : (pengguna.count ?? 0),
+            kosong.error ? null : (kosong.count ?? 0),
         ],
         aktivitas: (aktivitas.data ?? []) as unknown as Aktivitas[],
     };
@@ -172,7 +176,7 @@ async function ringkasanTataUsaha() {
  * adalah tanggal Jakarta yang diketik operator, dan zona waktu server
  * bukan zona waktu sekolah.
  */
-async function ringkasanPengurus() {
+async function ringkasanTataUsaha() {
     const supabase = await createClient();
 
     const bulanIni = tanggalHariIni().slice(0, 7); // "2026-09"
@@ -225,9 +229,9 @@ export default async function BerandaPage() {
     const ringkasan =
         user.role === "pegawai"
             ? await ringkasanPegawai(user.id)
-            : user.role === "tata_usaha"
-              ? await ringkasanTataUsaha()
-              : await ringkasanPengurus();
+            : user.role === "pengurus_barang"
+              ? await ringkasanPengurus()
+              : await ringkasanTataUsaha();
 
     const sekarang = new Date();
     const jam = Number(
@@ -262,14 +266,13 @@ export default async function BerandaPage() {
                 {RINGKASAN[user.role].map((label, i) => {
                     const nilai = ringkasan?.angka[i] ?? null;
                     // Barang Kosong adalah titik awal, bukan sekadar trivia:
-                    // baris pertama tiap peran menautkannya kalau ada tujuan
-                    // yang jelas - satu-satunya sejauh ini adalah tile ini,
-                    // milik pengurus barang. Tanpa ?kosong=1: filternya kini
-                    // di peramban lewat TanStack Table, bukan parameter URL.
-                    const href =
-                        user.role === "pengurus_barang" && i === 0
-                            ? "/stok"
-                            : null;
+                    // tile itu menautkan ke /stok, siapa pun pemiliknya -
+                    // tata usaha dan pengurus barang sama-sama punya tile ini,
+                    // di indeks yang berbeda, jadi aturannya diikat ke label
+                    // dan bukan ke peran plus indeks. Tanpa ?kosong=1:
+                    // filternya kini di peramban lewat TanStack Table, bukan
+                    // parameter URL.
+                    const href = label === "Barang Kosong" ? "/stok" : null;
 
                     return (
                         <Kartu

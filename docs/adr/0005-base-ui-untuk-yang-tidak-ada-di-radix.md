@@ -69,5 +69,5 @@ still looks like every `SelectTrigger` beside it. `ComboboxClear` lost its
 only caller in that edit and is exported rather than deleted, to keep the file
 close to what `shadcn` would regenerate.
 
-ADR 0001 and ADR 0004 are untouched: this decision is entirely about the
+ADR 0001 and ADR 0006 are untouched: this decision is entirely about the
 browser and reaches no policy, function, or role.

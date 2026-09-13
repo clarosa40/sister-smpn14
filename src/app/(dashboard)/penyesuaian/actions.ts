@@ -1,6 +1,6 @@
 "use server";
 
-import { pastikanPengurus, teks, type HasilAksi } from "@/lib/aksi";
+import { pastikanTataUsaha, teks, type HasilAksi } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
@@ -12,13 +12,13 @@ const GALAT_SUDAH_SESUAI =
 
 /**
  * P0001 sudah ditulis sebagai kalimat oleh catat_penyesuaian() untuk
- * seorang pengurus barang - diteruskan apa adanya, sama seperti
+ * seorang tata usaha - diteruskan apa adanya, sama seperti
  * pesanGalatPermintaan dan pesanGalatPenerimaan.
  */
 function pesanGalat(galat: PostgrestError): string {
     if (galat.code === "P0001") return galat.message;
     if (galat.code === "42501") {
-        return "Hanya pengurus barang yang boleh mencatat penyesuaian stok.";
+        return "Hanya tata usaha yang boleh mencatat penyesuaian stok.";
     }
     console.error("[penyesuaian]", galat.code, galat.message);
     return "Perubahan gagal disimpan. Coba lagi sebentar lagi.";
@@ -41,7 +41,7 @@ export async function catatPenyesuaian(
     _sebelumnya: HasilAksi | null,
     formData: FormData,
 ): Promise<HasilAksi> {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const barangId = teks(formData, "barang_id");
     const catatan = teks(formData, "catatan");

@@ -1,4 +1,4 @@
-import { pastikanPengurus } from "@/lib/aksi";
+import { pastikanTataUsaha } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { PenyesuaianDaftar, type BarangOpsi, type BarisPenyesuaian } from "./penyesuaian-daftar";
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PenyesuaianPage() {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const supabase = await createClient();
 

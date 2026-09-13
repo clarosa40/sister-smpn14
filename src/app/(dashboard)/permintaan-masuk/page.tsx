@@ -1,5 +1,5 @@
 import { Paginasi } from "@/components/admin/paginasi";
-import { pastikanPengurus, siapkanKataKunci } from "@/lib/aksi";
+import { pastikanTataUsaha, siapkanKataKunci } from "@/lib/aksi";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -61,7 +61,7 @@ export default async function PermintaanMasukPage({
         hal?: string;
     }>;
 }) {
-    await pastikanPengurus();
+    await pastikanTataUsaha();
 
     const parameter = await searchParams;
     const tampilan = tampilanDari(parameter.lihat);
@@ -81,7 +81,7 @@ export default async function PermintaanMasukPage({
     let kueri = supabase.from("permintaan").select(KOLOM, { count: "exact" });
 
     if (tampilan === "riwayat") {
-        // Persis permintaan yang pernah sampai ke antrean pengurus barang:
+        // Persis permintaan yang pernah sampai ke antrean tata usaha:
         // pernah disetujui, dan sekarang sudah selesai atau ditolak.
         // disetujui_at is not null memisahkan penolakan setelah persetujuan
         // dari penolakan langsung dari diajukan, yang tidak pernah singgah

@@ -19,7 +19,7 @@ const GALAT_UMUM = "Perubahan gagal disimpan. Coba lagi sebentar lagi.";
 /**
  * Pasangan pesanGalatPermintaan untuk galat yang datang dari alur
  * penerimaan. P0001 sudah ditulis sebagai kalimat oleh trigger pembekuan
- * (20260903010000) untuk seorang pengurus barang, jadi diteruskan apa
+ * (20260903010000) untuk seorang tata usaha, jadi diteruskan apa
  * adanya - menggantinya dengan kalimat umum membuang satu-satunya bagian
  * yang menjelaskan kenapa.
  */
@@ -29,7 +29,7 @@ export function pesanGalatPenerimaan(galat: PostgrestError): string {
             return galat.message;
 
         case "42501":
-            return "Hanya pengurus barang yang boleh mencatat penerimaan.";
+            return "Hanya tata usaha yang boleh mencatat penerimaan.";
 
         default:
             console.error("[penerimaan]", galat.code, galat.message);
