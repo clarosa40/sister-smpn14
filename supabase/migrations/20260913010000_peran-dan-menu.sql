@@ -2,7 +2,7 @@
 -- SIPB SMPN 14 - Pindahkan gerbang peran: pengurus barang menyetujui,
 -- tata usaha menggerakkan stok
 --
--- Lihat docs/adr/0004-pengurus-barang-menyetujui-tata-usaha-melayani.md.
+-- Lihat docs/adr/0006-pengurus-barang-menyetujui-tata-usaha-melayani.md.
 -- Ini murni pemindahan kapabilitas antara dua peran yang sudah ada -
 -- enum role_user, akun, dan siapa yang memegangnya tidak berubah sama
 -- sekali. Master data (kelola_barang, kelola_unit_kerja, kelola_profil)
@@ -233,9 +233,17 @@ $$;
 -- -------------------------------------------------------------
 -- jaga_alur_permintaan() - persetujuan berpindah ke pengurus barang,
 -- penyiapan dan penyerahan berpindah ke tata usaha. Direkreasi utuh
--- dari 20260907020000_permintaan-tanggal.sql, bukan dari
--- 20260825020000_fungsi.sql, supaya aturan tanggal permintaan di sana
--- tidak diam-diam kembali ke versi lama.
+-- dari versi terbarunya, 20260911010000_nomor-permintaan-tanggal.sql,
+-- bukan dari 20260825020000_fungsi.sql maupun 20260907020000: nomor
+-- permintaan berbasis tanggal dan aturan tanggalnya ikut terbawa, alih-alih
+-- diam-diam kembali ke versi lama. Komentar penjelas yang ada sejak
+-- 20260907020000 dipertahankan; versi 20260911010000 menjatuhkannya tanpa
+-- alasan yang tercatat.
+--
+-- Nama berkas migrasi ini pernah 20260908010000. Dinaikkan ke 20260913010000
+-- saat rebase supaya ia berjalan SESUDAH 20260911010000 - yang menciptakan
+-- ulang fungsi yang sama dan, dengan urutan lama, mengembalikan gerbang peran
+-- ke versi sebelum migrasi ini.
 -- -------------------------------------------------------------
 
 create or replace function public.jaga_alur_permintaan()
@@ -250,6 +258,8 @@ declare
   v_sah    boolean;
   v_belum  integer;
   v_isi    integer;
+  v_tahun  int;
+  v_seq    int;
 begin
   if tg_op = 'INSERT' then
     new.pemohon_id := coalesce(new.pemohon_id, v_uid);
@@ -382,7 +392,29 @@ begin
   end if;
 
   if new.status = 'diajukan' and new.nomor is null then
-    new.nomor := 'SPB-' || lpad(nextval('public.seq_permintaan')::text, 6, '0');
+    if new.tanggal is null then
+      raise exception 'new row for relation "permintaan" violates check constraint "tanggal_ada_setelah_draft"'
+        using errcode = '23514';
+    end if;
+
+    v_tahun := extract(year from new.tanggal)::int;
+
+    insert into public.nomor_counter (tahun, seq)
+    values (v_tahun, 1)
+    on conflict (tahun) do update set seq = public.nomor_counter.seq + 1
+    returning seq into v_seq;
+
+    if v_seq > 999 then
+      raise exception 'Urutan nomor untuk tahun % sudah penuh (maksimal 999)', v_tahun
+        using errcode = 'P0001';
+    end if;
+
+    new.nomor := 'SPB/'
+      || v_tahun::text
+      || '/'
+      || lpad(extract(month from new.tanggal)::int::text, 2, '0')
+      || '/'
+      || lpad(v_seq::text, 3, '0');
   end if;
 
   case new.status
