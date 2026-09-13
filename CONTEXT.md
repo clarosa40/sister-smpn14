@@ -1,7 +1,7 @@
 # SIPB SMPN 14
 
 Sistem Permintaan Barang: a school stockroom system where staff request
-consumable supplies, a storekeeper approves them, and an administrator
+consumable supplies, an asset officer approves them, and an administrator
 fulfils them. One school, one stockroom, three roles.
 
 Prose in this repo is English; identifiers, UI copy, and the terms below are
@@ -13,8 +13,8 @@ Indonesian, and every name they see should match what they say out loud.
 ### People and roles
 
 **Pegawai**:
-A member of school staff who requests supplies. The default role every new
-account gets.
+A teacher or other school employee who requests supplies. The default role
+every new account gets, and the one role that is not staf.
 _Avoid_: user, requester, employee (as a role name)
 
 **Pengurus Barang**:
@@ -29,9 +29,17 @@ performs every physical act in the stockroom: receiving goods, preparing
 requests, handing them over, correcting counts. The only role that moves stok.
 _Avoid_: admin, TU (in code)
 
+**Staf**:
+Pengurus barang and tata usaha together — the two roles that run the stockroom,
+as against the pegawai who request from it. Narrower than the school's own use
+of the word, where every employee is staff: here a pegawai is deliberately not
+staf. What the two share is the right to read stok, which is why stok is the
+one screen both of them reach.
+_Avoid_: karyawan, petugas, staff (for pegawai)
+
 **Unit Kerja**:
 The department a pegawai belongs to, and the department a permintaan is
-charged to. A table, not free text, so consumption reports never split over a
+charged to. A table, not free text, so the laporan konsumsi never splits over a
 spelling.
 _Avoid_: department, divisi, bagian
 
@@ -142,8 +150,8 @@ _Avoid_: alasan, tujuan, purpose
 
 **Tanggal Permintaan**:
 The day a pegawai actually asked for the supplies. Theirs to state, and it may
-fall before the day they typed the request in — riwayat and consumption reports
-count by this date, not by the day the row appeared.
+fall before the day they typed the request in — riwayat and the laporan
+konsumsi count by this date, not by the day the row appeared.
 _Avoid_: tanggal pengajuan, tanggal input, backdate
 
 **Tanggal Diajukan**:
@@ -185,6 +193,23 @@ first. The counterpart to an antrean.
 _Avoid_: histori, arsip, log
 
 ### Documents
+
+**Ekspor**:
+Handing the rows now on screen — as filtered, in the order shown — to Excel,
+where they are sorted, printed, and pasted into whatever the school actually
+files. Offered on stok, penerimaan, and permintaan masuk. A copy of a screen,
+never a document: it carries no nomor, totals nothing, and decides nothing.
+_Avoid_: unduh, download, cetak, laporan
+
+**Laporan Konsumsi**:
+The school's account of what each unit kerja consumed over a period. Built by
+hand in Excel from the permintaan masuk ekspor — SIPB has no screen for it and
+produces no such document. It is nonetheless why several things in here are
+strict: unit kerja is a table rather than free text, satuan is reused rather
+than retyped, and the count runs by tanggal permintaan. A satuan typed once as
+"Pcs" and once as "pcs" becomes two rows in the pivot, and the laporan is wrong
+before anyone reads it.
+_Avoid_: rekap, laporan pemakaian, report
 
 **Nomor**:
 A document's human-readable identifier. A permintaan's nomor encodes the
