@@ -121,8 +121,10 @@ stocks it at all — it simply cannot be requested.
 _Avoid_: habis, out of stock, inactive
 
 **Katalog**:
-What a pegawai browses to build a keranjang. It carries no numbers at all,
-only tersedia as a yes-or-no.
+What a pegawai browses to build a keranjang. It carries no stok figures:
+tersedia is a yes-or-no, and the only number on the page is the jumlah the
+pegawai is asking for. A screen that tells a pegawai how many are left is
+reading from a place the katalog does not reach.
 _Avoid_: daftar barang, product list
 
 ### Requests

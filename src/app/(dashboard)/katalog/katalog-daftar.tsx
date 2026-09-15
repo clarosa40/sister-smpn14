@@ -4,6 +4,7 @@ import { Pencarian } from "@/components/admin/pencarian";
 import { FormAlert } from "@/components/form-parts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { MAKS_JUMLAH } from "@/lib/permintaan";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import Link from "next/link";
@@ -174,7 +175,7 @@ export function KatalogDaftar({
 }
 
 /**
- * Tombol kurang / angka / tombol tambah. Diekspor karena halaman detail
+ * Tombol kurang / isian angka / tombol tambah. Diekspor karena halaman detail
  * memakai penyetel yang sama persis - dua salinan akan berarti dua tempat
  * yang bisa berbeda soal apa arti menekan minus di angka satu.
  */
@@ -189,6 +190,62 @@ export function Penyetel({
     menunggu: boolean;
     onUbah: (jumlah: number) => void;
 }) {
+    const ref = React.useRef<HTMLInputElement>(null);
+    // Ketikan yang belum sampai ke server, dan hanya itu. Selama tidak ada
+    // ketikan, yang tampil adalah prop jumlah - angka yang dirender dari
+    // database. Itulah yang membuat penulisan yang ditolak membetulkan
+    // dirinya sendiri: ketikannya dibuang begitu penulisannya selesai, dan
+    // yang tersisa di layar adalah angka yang benar-benar dipegang
+    // keranjang, bukan angka yang diminta.
+    const [ketikan, setKetikan] = React.useState<string | null>(null);
+    // Ketikan yang sudah dikirim, untuk membedakan "belum sempat diurus
+    // server" dari "sudah diurus, dan inilah jawabannya".
+    const dikirim = React.useRef<string | null>(null);
+
+    React.useEffect(() => {
+        // Penulisannya masih di jalan: menahan ketikannya supaya isian tidak
+        // sempat mundur ke angka lama sebelum yang baru datang.
+        if (menunggu) return;
+        // Ketikan yang belum dikirim masih milik yang mengetiknya. Satu baris
+        // boleh sedang menulis sementara baris lain sedang diketik - menunggu
+        // itu satu untuk seluruh daftar - dan ketikan di baris kedua tidak
+        // boleh ikut terhapus. Ketikan yang sudah dikirim tidak dilindungi
+        // begitu: ia sudah punya jawaban, dan jawabannya ada di prop jumlah,
+        // termasuk ketika jawabannya adalah penolakan.
+        if (dikirim.current === null && document.activeElement === ref.current)
+            return;
+        setKetikan(null);
+        dikirim.current = null;
+    }, [menunggu, jumlah]);
+
+    // Satu tulisan per suntingan, saat fokus lepas. Enter tidak punya jalur
+    // sendiri - ia melepas fokus, dan blur yang mengirimkannya.
+    const kirim = () => {
+        if (ketikan === null) return;
+
+        // Isian kosong bukan nol. Mengosongkan kotak adalah cara mengetik
+        // angka baru, dan blur di ponsel sering cuma jempol yang meleset -
+        // membacanya sebagai "keluarkan barang ini" akan menjadikan salah
+        // sentuh gerakan paling merusak di halaman. Nol yang diketik lain
+        // soal: itu memang berarti dikeluarkan, dan onUbah(0) persis yang
+        // dikirim tombol minus di angka satu.
+        if (ketikan.trim() === "") {
+            setKetikan(null);
+            return;
+        }
+
+        // Angka yang sama bukan suntingan, jadi tidak ada yang perlu
+        // dituliskan. Sekalian merapikan "007" jadi "7".
+        const angka = Number(ketikan);
+        if (angka === jumlah) {
+            setKetikan(null);
+            return;
+        }
+
+        dikirim.current = ketikan;
+        onUbah(angka);
+    };
+
     return (
         <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-border p-0.5">
             <Button
@@ -204,9 +261,35 @@ export function Penyetel({
             >
                 <Minus className="text-muted-foreground" strokeWidth={1.6} />
             </Button>
-            <span className="w-7 text-center text-[13px] font-medium tabular-nums text-foreground">
-                {jumlah}
-            </span>
+            {/* Tidak ikut mati saat menunggu, tidak seperti kedua tombol:
+                isian teks yang berubah disabled di tengah ketikan menjatuhkan
+                huruf dan bisa merebut fokus. Tidak ada risikonya - isian ini
+                mengirim saat fokus lepas, jadi ia pasti tidak sedang dipegang
+                kursor ketika penulisannya sendiri berjalan.
+
+                Juga tanpa langit-langit sendiri: MAKS_JUMLAH ditegakkan
+                setelJumlah, dan 999 yang akhirnya bisa dicapai lewat ketikan
+                justru inti perubahan ini. */}
+            <Input
+                ref={ref}
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                value={ketikan ?? String(jumlah)}
+                onChange={(e) => {
+                    dikirim.current = null;
+                    setKetikan(e.target.value);
+                }}
+                onBlur={kirim}
+                onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                }}
+                aria-label={`Jumlah ${nama}`}
+                className="h-8 w-9 border-0 bg-transparent px-0 text-center text-[13px] font-medium tabular-nums shadow-none md:text-[13px] dark:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+            />
             <Button
                 variant="ghost"
                 size="icon-sm"
