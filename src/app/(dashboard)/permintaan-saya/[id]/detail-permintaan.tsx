@@ -159,15 +159,22 @@ export function DetailPermintaan({
                                             menunggu={menunggu}
                                             onUbah={(n) => setel(item, n)}
                                         />
-                                        {/* Jalur keluar independen dari stepper: barang
-                                            yang stoknya habis setelah masuk keranjang
-                                            menolak setiap UPDATE dari tombol +/-
-                                            (trigger siapkan_permintaan_item mengecek
-                                            stok pada UPDATE juga), jadi jumlah tidak
-                                            pernah bisa diturunkan sampai 0 lewat
-                                            stepper. Tombol ini memanggil setel(item, 0)
-                                            langsung, yang berujung DELETE - tidak
-                                            pernah digerbangi trigger tersebut. */}
+                                        {/* Jalan keluar yang paling terbaca, dan sejak
+                                            isian jumlah bisa diketik bukan lagi
+                                            satu-satunya: mengetik 0 sampai di DELETE
+                                            yang sama. Tombol ini tetap ada karena
+                                            inilah yang dicari orang ketika ingin
+                                            membuang satu baris - tidak ada yang naluri
+                                            pertamanya mengetikkan nol.
+
+                                            Yang tetap benar: DELETE tidak pernah
+                                            digerbangi trigger siapkan_permintaan_item,
+                                            sedangkan UPDATE dari tombol +/- digerbangi.
+                                            Barang yang stoknya habis setelah masuk
+                                            keranjang karena itu tidak pernah bisa
+                                            diturunkan sampai 0 lewat stepper, tapi bisa
+                                            dikeluarkan lewat tombol ini - atau lewat 0
+                                            yang diketik. */}
                                         <Button
                                             variant="ghost"
                                             size="icon-sm"
