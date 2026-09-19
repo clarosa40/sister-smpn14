@@ -30,6 +30,7 @@ export default function AuthLayout({
                         width={373}
                         height={440}
                         priority
+                        sizes="104px"
                         className="h-26 w-auto"
                     />
                     <p className="mt-4 text-[22px] font-bold tracking-[-0.3px] text-foreground">
