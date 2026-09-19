@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "npm run test:sandi && npm run test:alamat && npm run test:permintaan && npm run test:penerimaan && npm run test:stok-filter && npm run test:ekspor && npm run test:impor && npm run db:test",
     "db:test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON supabase/tests/alur.mjs",
     "db:sandbox": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON supabase/tests/sandbox.mjs",
     "test:sandi": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/lib/sandi.test.mjs",
