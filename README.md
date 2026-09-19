@@ -32,3 +32,4 @@ npm test
 - [`docs/adr/`](./docs/adr/) — architecture decision records
 - [`docs/agents/`](./docs/agents/) — how agents work in this repo
 - [`impor/README.md`](./impor/README.md) — importing pegawai from an Excel file
+- [`docs/runbook-jeda-supabase.md`](./docs/runbook-jeda-supabase.md) — apa yang harus dilakukan tata usaha kalau situs error setelah libur panjang
