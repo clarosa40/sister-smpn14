@@ -35,12 +35,12 @@ export const supabaseProxy = async (request: NextRequest) => {
         },
     );
 
-    // Memanggil getUser() sekaligus menyegarkan sesi: kalau access token sudah
-    // basi, refresh token ditukar di sini dan pasangan barunya ditulis ke
-    // supabaseResponse lewat setAll di atas.
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    // Memanggil getClaims() sekaligus menyegarkan sesi: kalau access token
+    // sudah basi, refresh token ditukar di sini dan pasangan barunya ditulis
+    // ke supabaseResponse lewat setAll di atas. Beda dari getUser(), token
+    // diverifikasi lokal begitu proyek Supabase memakai kunci asimetris.
+    const { data } = await supabase.auth.getClaims();
+    const user = data?.claims;
 
     const { pathname } = request.nextUrl;
 
