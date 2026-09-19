@@ -3,11 +3,10 @@
 import { SidebarNav } from "@/components/sidebar-nav";
 import { LABEL_PERAN, navUntukPeran } from "@/config/nav-items";
 import type { User } from "@/lib/dal";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { LogOut, Menu, X } from "lucide-react";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 
 export function AppShell({
@@ -163,23 +162,12 @@ function IsiSidebar({ user, onTutup }: { user: User; onTutup?: () => void }) {
 }
 
 function PetakPengguna({ user }: { user: User }) {
-    const router = useRouter();
-    const [keluar, setKeluar] = React.useState(false);
-
     const inisial = user.namaLengkap
         .split(" ")
         .filter(Boolean)
         .slice(0, 2)
         .map((kata) => kata[0]?.toUpperCase())
         .join("");
-
-    const keluarSekarang = async () => {
-        setKeluar(true);
-        const supabase = createClient();
-        await supabase.auth.signOut();
-        router.push("/login");
-        router.refresh();
-    };
 
     return (
         <div className="mt-auto flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3.5">
@@ -197,16 +185,14 @@ function PetakPengguna({ user }: { user: User }) {
                     {LABEL_PERAN[user.role]}
                 </p>
             </div>
-            <button
-                type="button"
-                onClick={keluarSekarang}
-                disabled={keluar}
+            <a
+                href="/auth/keluar"
                 aria-label="Keluar"
                 title="Keluar"
-                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors outline-none hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 disabled:opacity-50"
+                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors outline-none hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-sidebar-ring/50"
             >
                 <LogOut className="size-4" strokeWidth={1.5} />
-            </button>
+            </a>
         </div>
     );
 }

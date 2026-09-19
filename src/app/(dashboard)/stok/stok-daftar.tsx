@@ -38,10 +38,10 @@ import {
     ArrowUp,
     ChevronsUpDown,
     FileSpreadsheet,
+    LoaderCircle,
     X,
 } from "lucide-react";
 import * as React from "react";
-import * as XLSX from "xlsx";
 
 export type BarisStok = {
     barang_id: string;
@@ -151,7 +151,8 @@ const KOLOM_EKSPOR: KolomEkspor<BarisStok>[] = [
  * sudah dipotong ke halaman aktif, sedangkan ekspor harus mencakup seluruh
  * baris yang lolos filter dan sortir, bukan cuma 25 baris yang terlihat.
  */
-function eksporExcel(table: ReactTable<typeof features, BarisStok>) {
+async function eksporExcel(table: ReactTable<typeof features, BarisStok>) {
+    const XLSX = await import("xlsx");
     const baris = table.getSortedRowModel().rows.map((row) => row.original);
     const aoa = keAoaEkspor(baris, KOLOM_EKSPOR);
     const sheet = XLSX.utils.aoa_to_sheet(aoa);
@@ -415,6 +416,16 @@ function AlatFilter({
     // angka yang gagal di-parse akan hilang dari kotaknya.
     const [stokMin, setStokMin] = React.useState("");
     const [stokMax, setStokMax] = React.useState("");
+    const [mengekspor, setMengekspor] = React.useState(false);
+
+    const eksporSekarang = async () => {
+        setMengekspor(true);
+        try {
+            await eksporExcel(table);
+        } finally {
+            setMengekspor(false);
+        }
+    };
 
     const angkaAtauUndefined = (nilai: string): number | undefined => {
         if (nilai.trim() === "") return undefined;
@@ -561,10 +572,15 @@ function AlatFilter({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => eksporExcel(table)}
+                    onClick={eksporSekarang}
+                    disabled={mengekspor}
                     className={filterAktif ? "" : "ml-auto"}
                 >
-                    <FileSpreadsheet />
+                    {mengekspor ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                    ) : (
+                        <FileSpreadsheet />
+                    )}
                     Ekspor Excel
                 </Button>
             </div>
