@@ -126,6 +126,7 @@ function IsiSidebar({ user, onTutup }: { user: User; onTutup?: () => void }) {
                     alt=""
                     width={373}
                     height={440}
+                    sizes="32px"
                     className="h-8 w-auto shrink-0"
                 />
                 <div className="min-w-0">
