@@ -24,8 +24,7 @@ export default function Error({
                     Halaman tidak bisa dimuat
                 </h2>
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
-                    Server tidak sempat merespons; mencoba lagi biasanya
-                    berhasil.
+                    Server tidak sempat merespons; coba lagi.
                 </p>
             </div>
             {error.digest && (
